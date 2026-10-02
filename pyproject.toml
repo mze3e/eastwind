@@ -1,0 +1,42 @@
+[project]
+name = "eastwind"
+version = "0.1.0"
+description = "Eastwind Private workshop demo: prove an eligibility answer was permitted, using kognita."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "The Eastwind Private Workshop Authors" }]
+keywords = ["kognita", "governance", "audit", "openai", "workshop"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+dependencies = [
+    "kognita[openai]>=0.2.0,<0.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+eastwind = "eastwind.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mze3e/kognita"
+Kognita = "https://github.com/mze3e/kognita"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "openai: live OpenAI call; skipped unless OPENAI_API_KEY is set",
+]
