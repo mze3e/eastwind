@@ -1,10 +1,12 @@
 """OpenAI chat completions as the callable behind ``EgressGuard.send``.
 
-kognita 0.2.0 ships ``LLMConfig`` and ``kognita.adapters.OpenAICompatibleEmbedder``.
-It does not ship a chat-completions client. The workshop callable is the OpenAI
-SDK installed by ``kognita[openai]``. ``EgressGuard.send`` is the only path that
-may invoke it: the guard receives the raw prompt, redacts or refuses, and the
-SDK sees the text the guard decided to send.
+kognita 0.3 ships the AI gateway (``kognita serve``) and
+``kognita.adapters.OpenAICompatibleEmbedder``. It still does not ship a
+chat-completions client. This callable is the OpenAI SDK installed by
+``kognita[openai]``. ``EgressGuard.send`` is the only path that may invoke it
+on the direct workshop run: the guard receives the raw prompt, redacts or
+refuses, and the SDK sees the text the guard decided to send. The gateway
+scenario points the same SDK at ``base_url`` instead.
 """
 
 from __future__ import annotations

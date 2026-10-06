@@ -13,6 +13,7 @@ from eastwind.pack import (
     DENY,
     PURPOSES,
     EastwindPack,
+    client_envelope,
     seed_store,
 )
 
@@ -109,3 +110,4 @@ class TestEastwindConformance(ConformanceCase):
         self.harness = Harness(pack=EastwindPack(), purposes=PURPOSES, seed=seed_store)
         self.allow_envelope = ALLOW.envelope()
         self.deny_envelope = DENY.envelope()
+        self.human_envelope = client_envelope("draft_client_letter")

@@ -19,6 +19,7 @@ from kognita.vocabulary import CheckResult
 from eastwind import __version__
 from eastwind.openai_chat import DEFAULT_MODEL, OpenAIChat
 from eastwind.run import ScenarioResult, run_scenario
+from eastwind.showcase import SCENARIO_ORDER, run_all, run_named
 
 DEFAULT_DB = Path(".eastwind/evidence.db")
 
@@ -236,6 +237,18 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_showcase(args: argparse.Namespace) -> int:
+    root = _db_path(args.db)
+    if args.scenario == "all":
+        results = run_all(root)
+    else:
+        results = [run_named(args.scenario, root)]
+    for result in results:
+        print(result.text())
+        print()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eastwind",
@@ -273,6 +286,22 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--correlation-id", help="mark one request as of interest")
     export.add_argument("-o", "--output", help="write to a file instead of stdout")
     export.set_defaults(func=cmd_export)
+
+    showcase = sub.add_parser(
+        "showcase",
+        help="run one kognita 0.3 scenario, or all of them",
+    )
+    showcase.add_argument(
+        "scenario",
+        choices=[*SCENARIO_ORDER, "all"],
+        help="scenario name, or all",
+    )
+    showcase.add_argument(
+        "--db",
+        default=str(Path(".eastwind/showcase")),
+        help="directory (or .db path) for the scenario stores",
+    )
+    showcase.set_defaults(func=cmd_showcase)
 
     return parser
 

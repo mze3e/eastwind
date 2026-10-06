@@ -1,6 +1,6 @@
 [project]
 name = "eastwind"
-version = "0.1.0"
+version = "0.2.0"
 description = "Eastwind Private workshop demo: prove an eligibility answer was permitted, using kognita."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,7 +15,7 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
-    "kognita[openai]>=0.2.0,<0.3",
+    "kognita[openai]>=0.3.0,<0.4",
 ]
 
 [project.optional-dependencies]

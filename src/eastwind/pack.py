@@ -125,6 +125,17 @@ KNOWLEDGE: list[dict[str, Any]] = [
         "zones": ["SG"],
         "source_label": "Steering group minutes",
     },
+    {
+        "title": "Unzoned draft — not visible",
+        "body": (
+            "A note with no zone is not visible in any zone. "
+            "Entitlement fails closed when the zone list is missing."
+        ),
+        "kind": "POLICY",
+        "classification": Classification.C1,
+        "zones": [],
+        "source_label": "Eastwind Private House View, unzoned draft",
+    },
 ]
 
 
@@ -189,6 +200,29 @@ DENY = Scenario(
 SCENARIOS: dict[str, Scenario] = {ALLOW.name: ALLOW, DENY.name: DENY}
 
 
+def client_envelope(
+    tool: str,
+    *,
+    client_id: str = "CL-1001",
+    instrument_id: str = "INS-MMF",
+    principal: str = "rm.sg@eastwind.example",
+    actor_location: str = "SG",
+    arguments: dict[str, Any] | None = None,
+) -> Envelope:
+    """An envelope over the existing clients and instruments."""
+    return Envelope(
+        principal=principal,
+        purpose="ELIGIBILITY_CHECK",
+        tool=tool,
+        actor_location=actor_location,
+        agent_name=AGENT_NAME,
+        subject_type="client",
+        subject_id=client_id,
+        subjects={"instrument": instrument_id},
+        arguments=dict(arguments or {}),
+    )
+
+
 class EastwindPack:
     """Domain pack composed with kognita's decision engine."""
 
@@ -214,7 +248,7 @@ class EastwindPack:
         """Attributes policy turns on. Names, emails, and account numbers stay out."""
         client = subjects.get("client") or {}
         instrument = subjects.get("instrument") or {}
-        return {
+        attributes = {
             "actor_location": envelope.actor_location,
             "client_domicile": client.get("domicile"),
             "accredited_investor": bool(client.get("accredited_investor")),
@@ -222,6 +256,11 @@ class EastwindPack:
             "product_kind": instrument.get("kind"),
             "instrument_origin": instrument.get("origin"),
         }
+        # A typed handling label is the pack's, not the model's. The classifier
+        # must not overwrite it, including when the argument text names another.
+        if envelope.tool == "typed_classification":
+            attributes["classification"] = Classification.C0.value
+        return attributes
 
     def rules(self) -> dict[str, Any]:
         return build_registry()
@@ -239,11 +278,42 @@ class EastwindPack:
             return attrs.get("actor_location") == "AE"
         if policy.regime == "PRODUCT_GOVERNANCE":
             return attrs.get("product_kind") == "STRUCTURED_NOTE"
+        tool = context.envelope.tool
+        if policy.regime == "CLASSIFIER_GATE":
+            return tool in {"classify_question", "classify_tool", "vague_note"}
+        if policy.regime == "HANDLING":
+            return tool in {"injection_question", "typed_classification"}
+        if policy.regime == "CLIENT_LETTER":
+            return tool == "draft_client_letter"
+        if policy.regime == "RELEASE_NOTE":
+            return tool == "release_structured_note"
+        if policy.regime == "TOOL_BAR":
+            return tool == "offer_autocall"
+        if policy.regime == "MONEY_MARKET_WINDOW":
+            return tool == "historical_eligibility"
         return False
 
 
+def seed_agent(session: Session) -> None:
+    """Register ``eligibility-advisor`` once. The kill switch stays off."""
+    if session.exec(select(Agent).where(Agent.name == AGENT_NAME)).first() is not None:
+        return
+    session.add(
+        Agent(
+            name=AGENT_NAME,
+            version="0.1.0",
+            owner_exec=AGENT_OWNER,
+            risk_class="HIGH",
+            materiality_tier="T2",
+            kill_switch=False,
+        )
+    )
+    session.flush()
+
+
 def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> None:
-    """Insert the agent, the four rules, and the knowledge corpus once."""
+    """Insert the agent, the rules, and the knowledge corpus once."""
+    seed_agent(session)
     if session.exec(select(Policy)).first() is not None:
         return
 
@@ -309,21 +379,71 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
             citation="Eastwind Private Product Governance Standard s9 (workshop fiction)",
             effective_from=start,
         ),
+        Policy(
+            regime="CLASSIFIER_GATE",
+            rule_type="CLASSIFIER_CONFIDENCE",
+            rule={"min_confidence": 0.8},
+            citation=(
+                "Eastwind Private Product Governance Standard s9 — "
+                "uncertainty is not permission (workshop fiction)"
+            ),
+            effective_from=start,
+        ),
+        Policy(
+            regime="HANDLING",
+            rule_type="ATTRIBUTE_ALLOWLIST",
+            rule={
+                "allow": {"classification": ["C0"]},
+                "on_violation": "fail",
+                "description": "This tool permits a typed public label only.",
+            },
+            citation="Eastwind Private Product Governance Standard s9 (workshop fiction)",
+            effective_from=start,
+        ),
+        Policy(
+            regime="CLIENT_LETTER",
+            rule_type="REQUIRES_HUMAN_APPROVAL",
+            rule={"tools": ["draft_client_letter"]},
+            citation="Eastwind Private Product Governance Standard s9 (workshop fiction)",
+            effective_from=start,
+        ),
+        Policy(
+            regime="RELEASE_NOTE",
+            rule_type="TWO_SIGNATURE_APPROVAL",
+            rule={"tools": ["release_structured_note"]},
+            citation="Eastwind Private Product Governance Standard s9 (workshop fiction)",
+            effective_from=start,
+        ),
+        Policy(
+            regime="TOOL_BAR",
+            rule_type="PROHIBITED",
+            rule={
+                "description": "An autocall is not released through this tool.",
+                "on_violation": "fail",
+            },
+            citation="SFC Code of Conduct para 5.5 (workshop fiction)",
+            effective_from=start,
+        ),
+        Policy(
+            regime="MONEY_MARKET_WINDOW",
+            rule_type="ATTRIBUTE_ALLOWLIST",
+            applies_to="MONEY_MARKET",
+            rule={
+                "allow": {"client_domicile": list(PERMITTED_DOMICILES)},
+                "on_violation": "fail",
+                "description": (
+                    "Money-market house guidance stays inside the permitted domiciles."
+                ),
+            },
+            citation=(
+                "MAS Guidelines on Fair Dealing (FAA-G11); "
+                "house adoption s3 (workshop fiction)"
+            ),
+            effective_from=start,
+        ),
     ]
     for row in rows:
         session.add(row)
-
-    session.add(
-        Agent(
-            name=AGENT_NAME,
-            version="0.1.0",
-            owner_exec=AGENT_OWNER,
-            risk_class="HIGH",
-            materiality_tier="T2",
-            kill_switch=False,
-        )
-    )
-    session.flush()
 
     embedder = embedder or HashingEmbedder()
     for item in KNOWLEDGE:
