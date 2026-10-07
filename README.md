@@ -25,9 +25,7 @@ eastwind showcase all
 
 The talk page is built when this repository deploys to Vercel. The build runs the three projector commands above, in that order, on a temporary store, and publishes their output as a static page. The build clears `OPENAI_API_KEY` and uses the offline echo model only.
 
-https://eastwind.vercel.app
-
-That address is a placeholder until the deployment hostname is confirmed.
+https://eastwind-kognita.vercel.app
 
 `scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]>=0.3,<0.4` from `uv.lock`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
 
