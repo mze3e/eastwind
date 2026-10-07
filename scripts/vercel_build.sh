@@ -13,7 +13,9 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 if command -v uv >/dev/null 2>&1; then
-  uv sync --frozen --no-dev
+  # The CLI imports the showcase, and that imports kognita.testing, which
+  # imports pytest. The dev extra is the install the projector runbook uses.
+  uv sync --frozen --extra dev
   uv run --no-sync python scripts/build_demo_page.py
 else
   echo "uv unavailable; installing with pip into .venv" >&2
@@ -31,7 +33,7 @@ else
     exit 1
   fi
   "$py" -m venv .venv
-  .venv/bin/python -m pip install --disable-pip-version-check .
+  .venv/bin/python -m pip install --disable-pip-version-check ".[dev]"
   .venv/bin/python scripts/build_demo_page.py
 fi
 

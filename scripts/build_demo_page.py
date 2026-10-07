@@ -183,7 +183,7 @@ def capture_demo() -> DemoTranscripts:
     if "provider saw:" not in allow or "caller received" not in allow:
         raise RuntimeError("ALLOW transcript has no redacted/restored prompt")
     provider = _between(allow, "provider saw:", "caller received")
-    restored = _between(allow, "caller received", "Evidence")
+    restored = _between(allow, "caller received (tokens restored):", "Evidence")
     for planted in (allowed["name"], allowed["email"], allowed["account"]):
         if planted in provider:
             raise RuntimeError("redaction failed: a client identifier reached the provider side")

@@ -29,7 +29,7 @@ https://eastwind.vercel.app
 
 That address is a placeholder until the deployment hostname is confirmed.
 
-`scripts/vercel_build.sh` installs this package (Python 3.12 or newer, `kognita[openai]>=0.3,<0.4` from `uv.lock`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
+`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]>=0.3,<0.4` from `uv.lock`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
 
 With `OPENAI_API_KEY` set, use the live call in place of the echo, then verify again:
 
