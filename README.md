@@ -21,6 +21,16 @@ eastwind showcase all
 
 `deny` does not retrieve and does not call a model. `allow --echo-model` retrieves, then shows the redacted prompt and the restored reply with no API key. `verify` checks the hash chain in `.eastwind/evidence.db`. `showcase all` is the longer tour, one sqlite file per scenario under `.eastwind/showcase/`. It stays on this machine.
 
+## Live demo
+
+The talk page is built when this repository deploys to Vercel. The build runs the three projector commands above, in that order, on a temporary store, and publishes their output as a static page. The build clears `OPENAI_API_KEY` and uses the offline echo model only.
+
+https://eastwind.vercel.app
+
+That address is a placeholder until the deployment hostname is confirmed.
+
+`scripts/vercel_build.sh` installs this package (Python 3.12 or newer, `kognita[openai]>=0.3,<0.4` from `uv.lock`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
+
 With `OPENAI_API_KEY` set, use the live call in place of the echo, then verify again:
 
 ```bash
@@ -146,6 +156,9 @@ src/eastwind/showcase.py       one scenario per kognita 0.3 feature
 src/eastwind/local_servers.py  local OpenAI and MCP stand-ins
 src/eastwind/openai_chat.py    chat completions callable used by the guard
 src/eastwind/cli.py            eastwind run | showcase | verify | export | doctor
+scripts/build_demo_page.py     static talk page from the offline commands
+scripts/vercel_build.sh        Vercel build: install, then build the page
+vercel.json                    static output in public/
 tests/                         offline governance and showcase, plus an optional live call
 ```
 
