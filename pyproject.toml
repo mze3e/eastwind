@@ -20,6 +20,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+# Optional: the `eastwind showcase ingest` scenario parses a markdown house view.
+docling = ["kognita[docling]>=0.4.0,<0.5"]
 
 [project.scripts]
 eastwind = "eastwind.cli:main"

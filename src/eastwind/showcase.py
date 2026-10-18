@@ -1,6 +1,7 @@
-"""Workshop tour of the kognita 0.3 surface, on the Eastwind Private pack.
+"""Workshop tour of the kognita surface, on the Eastwind Private pack.
 
-Each function is one ``eastwind showcase`` scenario. They call the real
+Each function is one ``eastwind showcase`` scenario. The 0.4 scenarios
+(register through adapters) live in :mod:`eastwind.showcase04`. They call the real
 kognita APIs. The gateway and MCP scenarios also start ``kognita serve``
 against a local stand-in, so nothing here needs an API key or a network
 beyond localhost.
@@ -91,6 +92,17 @@ SCENARIO_ORDER = (
     "gateway",
     "mcp",
     "conformance",
+    # kognita 0.4
+    "register",
+    "policy",
+    "ingest",
+    "contact",
+    "communicate",
+    "outcomes",
+    "breaker",
+    "packs",
+    "recorder",
+    "adapters",
 )
 
 MARCH = datetime(2026, 3, 15, tzinfo=timezone.utc)
@@ -204,13 +216,36 @@ def run_named(name: str, root: Path) -> ShowcaseResult:
         "gateway": scenario_gateway,
         "mcp": scenario_mcp,
         "conformance": scenario_conformance,
+        **_v04_runners(),
     }
     try:
         runner = runners[name]
     except KeyError:
         known = ", ".join(SCENARIO_ORDER)
         raise SystemExit(f"unknown scenario {name!r}; choose from {known}, or all") from None
-    return runner(scenario_db(root, name))
+    path = scenario_db(root, name)
+    _fresh(path)
+    return runner(path)
+
+
+def _fresh(path: Path) -> None:
+    """Remove what an earlier run left, so a scenario can be shown twice in a row."""
+    import shutil
+
+    for sibling in path.parent.glob(f"{path.stem}*"):
+        if sibling.is_dir():
+            shutil.rmtree(sibling)
+        else:
+            sibling.unlink()
+
+
+def _v04_runners() -> dict[str, Any]:
+    from eastwind import showcase04 as v04
+
+    return {name: getattr(v04, f"scenario_{name}") for name in V04_SCENARIOS}
+
+
+V04_SCENARIOS = SCENARIO_ORDER[SCENARIO_ORDER.index("register") :]
 
 
 def run_all(root: Path) -> list[ShowcaseResult]:
@@ -309,7 +344,7 @@ def scenario_authorise(path: Path) -> ShowcaseResult:
     story.fact("purpose_missing_outcome", missing.outcome.value)
     story.say(
         f"No purpose list  {missing.outcome.value}  "
-        "(0.3 fails closed; an empty list is not 'allow every purpose')"
+        "(fails closed; an empty list is not 'allow every purpose')"
     )
     story.say("")
 

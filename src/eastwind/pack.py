@@ -11,7 +11,7 @@ which attributes a rule turns on, and which regimes are in scope.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlmodel import Session, select
@@ -464,7 +464,9 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
 # empty register denies. The workshop's purposes are registered as live,
 # tier 1 use cases. Owners are workshop fiction; the control function is not
 # a business or technology owner, as the register requires.
-USECASE_REGISTERED_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
+# Registered 30 days before the store is seeded, so a tier 1 review date
+# (365 days) never lapses during a talk, whatever the date.
+USECASE_LEAD = timedelta(days=30)
 USECASE_OWNERS = {
     "business_owner": AGENT_OWNER,
     "technology_owner": "Head of Platform Engineering, Eastwind Private",
@@ -482,8 +484,17 @@ MODEL_CARDS = (
 )
 
 
-def register_usecases(session: Session, *, at: datetime | None = None) -> None:
-    """Register, rate and activate every workshop purpose once."""
+def register_usecases(
+    session: Session,
+    *,
+    at: datetime | None = None,
+    residual_materiality: str = "low",
+) -> None:
+    """Register, rate and activate every workshop purpose once.
+
+    ``residual_materiality="high"`` makes the use case material, which brings
+    in kill-switch drills; the breaker scenario uses it.
+    """
     from kognita import EvidenceWriter
     from kognita.models import UseCase
     from kognita.usecases import (
@@ -500,7 +511,7 @@ def register_usecases(session: Session, *, at: datetime | None = None) -> None:
 
     if session.exec(select(UseCase)).first() is not None:
         return
-    when = at or USECASE_REGISTERED_AT
+    when = at or datetime.now(timezone.utc) - USECASE_LEAD
     evidence = EvidenceWriter(session.get_bind())
     model_owner = USECASE_OWNERS["model_owner"]
     cards = []
@@ -529,7 +540,7 @@ def register_usecases(session: Session, *, at: datetime | None = None) -> None:
             permitted_client_impact=("internal productivity", "rm assistance"),
             external_communication=False,
             transaction_authority=False,
-            maximum_residual_materiality="medium",
+            maximum_residual_materiality="high" if residual_materiality == "high" else "medium",
         ),
         evidence=evidence,
         actor_id=USECASE_OWNERS["risk_owner"],
@@ -553,7 +564,7 @@ def register_usecases(session: Session, *, at: datetime | None = None) -> None:
             },
             inherent_materiality="medium",
             credited_controls=("entitlement filter", "egress redaction"),
-            residual_materiality="low",
+            residual_materiality=residual_materiality,
             approval_gate="none",
             review_sampling_rate=0.1,
             maximum_autonomy=1,

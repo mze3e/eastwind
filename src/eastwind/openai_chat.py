@@ -1,6 +1,6 @@
 """OpenAI chat completions as the callable behind ``EgressGuard.send``.
 
-kognita 0.3 ships the AI gateway (``kognita serve``) and
+kognita (since 0.3) ships the AI gateway (``kognita serve``) and
 ``kognita.adapters.OpenAICompatibleEmbedder``. It still does not ship a
 chat-completions client. This callable is the OpenAI SDK installed by
 ``kognita[openai]``. ``EgressGuard.send`` is the only path that may invoke it
