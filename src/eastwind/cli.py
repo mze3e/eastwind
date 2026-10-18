@@ -289,7 +289,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     showcase = sub.add_parser(
         "showcase",
-        help="run one kognita 0.3 scenario, or all of them",
+        help="run one kognita scenario (0.3 and 0.4 features), or all of them",
     )
     showcase.add_argument(
         "scenario",
