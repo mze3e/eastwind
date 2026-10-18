@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install (kognita from PyPI, pinned by uv.lock)
+        run: uv sync --frozen --extra dev
+      - name: Offline suite, every showcase scenario
+        run: uv run --no-sync pytest -m "not openai" -q
+      - name: The tour, end to end
+        run: uv run --no-sync eastwind showcase all --db "$RUNNER_TEMP/tour" > /dev/null
