@@ -575,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "kognita"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -583,9 +583,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "sqlmodel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/05/d37702bbfcf9e2a628991a025b3f79532ab9e5b3c801a6c1a4ed32f7ae9c/kognita-0.4.0.tar.gz", hash = "sha256:83b6f67be06143810fceb0d81be6b3a7179e621297ec3c7afb721baacc717685", size = 425734, upload-time = "2026-10-18T07:44:00.833Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/20/e5557ae658354a00edb5fc6023c33cf7f2e1b57f2026eb3eff7610692cd5/kognita-0.4.1.tar.gz", hash = "sha256:fba277b6e26fff108dba2870b6dcae90a816ea29f916c26585ea1efa5e90f8b4", size = 425973, upload-time = "2026-10-18T10:18:16.5Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/37/9b6687f3fb7475bb2dcfaf8a848db383106448d146b7a17675b762ae37cc/kognita-0.4.0-py3-none-any.whl", hash = "sha256:e37c57fb0e8120818dddf95bb39d09b277c996ac9a942c804237977cdd4e0e96", size = 336789, upload-time = "2026-10-18T07:43:59.383Z" },
+    { url = "https://files.pythonhosted.org/packages/49/7a/2df488f0faf5b9a7b128b214bedace92824bb71a51d51d791b7ca52d2f19/kognita-0.4.1-py3-none-any.whl", hash = "sha256:35fd0dfdb64b9447adc75f2ff406dea3bf17bf4b8e20f2570bcd3bdd416c871f", size = 336841, upload-time = "2026-10-18T10:18:14.678Z" },
 ]
 
 [package.optional-dependencies]
