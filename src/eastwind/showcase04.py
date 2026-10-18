@@ -808,7 +808,7 @@ def scenario_breaker(path: Path) -> Any:
             refused = str(exc)
         session.rollback()
     story.fact("kill_switch_release_refused", bool(refused))
-    story.say(f"revoke agent  kill switch engaged; releasing it is refused")
+    story.say("revoke agent  kill switch engaged; releasing it is refused")
     story.say(f"cite    {refused}")
     stopped, cite = decide_once("agent revoked")
     story.fact("agent_revoked_outcome", stopped.outcome.value)

@@ -475,8 +475,9 @@ USECASE_OWNERS = {
     "control_function": "Compliance Testing, Eastwind Private",
 }
 
-# Model cards the workshop approves: the gateway stand-in, and the OpenAI
-# model the optional live path uses. ``provider/model@version``.
+# Model cards the workshop approves: the gateway stand-in, the in-process
+# gateway beats' local stand-in, and the OpenAI model the 0.4 beats name on
+# their offline egress calls. ``provider/model@version``.
 MODEL_CARDS = (
     ("upstream.eastwind.example", "eastwind-stand-in", "eastwind-stand-in"),
     ("127.0.0.1", "eastwind-local", "eastwind-local"),
