@@ -314,6 +314,7 @@ def seed_agent(session: Session) -> None:
 def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> None:
     """Insert the agent, the rules, and the knowledge corpus once."""
     seed_agent(session)
+    register_usecases(session)
     if session.exec(select(Policy)).first() is not None:
         return
 
@@ -456,4 +457,123 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
             classification=item["classification"],
             zones=item["zones"],
             source_label=item["source_label"],
+        )
+
+
+# kognita 0.4: execution paths decide against the use-case register, and an
+# empty register denies. The workshop's purposes are registered as live,
+# tier 1 use cases. Owners are workshop fiction; the control function is not
+# a business or technology owner, as the register requires.
+USECASE_REGISTERED_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
+USECASE_OWNERS = {
+    "business_owner": AGENT_OWNER,
+    "technology_owner": "Head of Platform Engineering, Eastwind Private",
+    "risk_owner": "Chief Risk Officer, Eastwind Private",
+    "model_owner": "Head of Model Risk, Eastwind Private",
+    "control_function": "Compliance Testing, Eastwind Private",
+}
+
+# Model cards the workshop approves: the gateway stand-in, and the OpenAI
+# model the optional live path uses. ``provider/model@version``.
+MODEL_CARDS = (
+    ("upstream.eastwind.example", "eastwind-stand-in", "eastwind-stand-in"),
+    ("127.0.0.1", "eastwind-local", "eastwind-local"),
+    ("openai", "gpt-4o-mini", "gpt-4o-mini"),
+)
+
+
+def register_usecases(session: Session, *, at: datetime | None = None) -> None:
+    """Register, rate and activate every workshop purpose once."""
+    from kognita import EvidenceWriter
+    from kognita.models import UseCase
+    from kognita.usecases import (
+        ACCOUNTABILITY,
+        Appetite,
+        UseCaseSpec,
+        activate,
+        approve_rating,
+        model_card_id,
+        register,
+        register_model_card,
+        set_appetite,
+    )
+
+    if session.exec(select(UseCase)).first() is not None:
+        return
+    when = at or USECASE_REGISTERED_AT
+    evidence = EvidenceWriter(session.get_bind())
+    model_owner = USECASE_OWNERS["model_owner"]
+    cards = []
+    for provider, model, version in MODEL_CARDS:
+        register_model_card(
+            session,
+            provider=provider,
+            model=model,
+            version=version,
+            intended_use="Workshop eligibility answers for a relationship manager",
+            limitations="Workshop model; answers are checked against house guidance",
+            evaluation_results="Workshop fiction: no production evaluation",
+            approver=model_owner,
+            approved_at=when,
+            evidence=evidence,
+            actor_id=model_owner,
+            at=when,
+        )
+        cards.append(model_card_id(provider, model, version))
+    set_appetite(
+        session,
+        Appetite(
+            allowed_categories=("research summarization",),
+            prohibited_categories=("financial execution",),
+            maximum_autonomy=2,
+            permitted_client_impact=("internal productivity", "rm assistance"),
+            external_communication=False,
+            transaction_authority=False,
+            maximum_residual_materiality="medium",
+        ),
+        evidence=evidence,
+        actor_id=USECASE_OWNERS["risk_owner"],
+        senior_management=True,
+        at=when,
+    )
+    for purpose in PURPOSES:
+        spec = UseCaseSpec(
+            usecase_id=purpose,
+            purpose="Tell a relationship manager whether a client may be offered a product.",
+            category="research summarization",
+            accountability={seat: AGENT_OWNER for seat in ACCOUNTABILITY},
+            builders=("Workshop Builder",),
+            client_impact="internal productivity",
+            data_sensitivity="internal",
+            complexity={
+                "technology": "established",
+                "novelty": "familiar",
+                "explainability": "explainable",
+                "third_party_visibility": "not_applicable",
+            },
+            inherent_materiality="medium",
+            credited_controls=("entitlement filter", "egress redaction"),
+            residual_materiality="low",
+            approval_gate="none",
+            review_sampling_rate=0.1,
+            maximum_autonomy=1,
+            monitoring=True,
+            explanation_depth="citation",
+            validators=(AGENT_OWNER,),
+            agents=(AGENT_NAME,),
+            approved_models=tuple(cards),
+            model_providers=tuple(sorted({card[0] for card in MODEL_CARDS})),
+            ai_endpoints=("upstream.eastwind.example", "127.0.0.1", "api.openai.com"),
+            jurisdiction="SG",
+            **USECASE_OWNERS,
+        )
+        register(session, spec, evidence=evidence, actor_id=AGENT_OWNER, at=when)
+        approve_rating(session, purpose, spec.control_function, evidence=evidence, at=when)
+        activate(
+            session,
+            purpose,
+            status="live",
+            evidence=evidence,
+            actor_id=spec.control_function,
+            at=when,
         )

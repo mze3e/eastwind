@@ -72,6 +72,7 @@ from eastwind.pack import (
     PURPOSES,
     EastwindPack,
     client_envelope,
+    register_usecases,
     seed_agent,
     seed_store,
 )
@@ -375,7 +376,7 @@ def scenario_egress(path: Path) -> ShowcaseResult:
     engine, writer = _seeded(path)
     client = CLIENTS["CL-1001"]
     redactor = PatternRedactor(extra_terms=[str(client["name"])])
-    guard = EgressGuard(policy=EgressPolicy(), redactor=redactor, evidence=writer)
+    guard = EgressGuard(policy=EgressPolicy(trust_local=True), redactor=redactor, evidence=writer)
     calls: list[str] = []
 
     def completer(text: str) -> str:
@@ -400,6 +401,9 @@ def scenario_egress(path: Path) -> ShowcaseResult:
             actor_id=AGENT_NAME,
             actor_type=ActorType.AGENT,
             use_case="ELIGIBILITY_CHECK",
+            provider="openai",
+            model="gpt-4o-mini",
+            model_version="gpt-4o-mini",
         )
         redacted = guard.send(
             c2,
@@ -412,6 +416,9 @@ def scenario_egress(path: Path) -> ShowcaseResult:
             actor_id=AGENT_NAME,
             actor_type=ActorType.AGENT,
             use_case="ELIGIBILITY_CHECK",
+            provider="openai",
+            model="gpt-4o-mini",
+            model_version="gpt-4o-mini",
         )
         local = guard.send(
             c2,
@@ -424,6 +431,9 @@ def scenario_egress(path: Path) -> ShowcaseResult:
             actor_id=AGENT_NAME,
             actor_type=ActorType.AGENT,
             use_case="ELIGIBILITY_CHECK",
+            provider="openai",
+            model="gpt-4o-mini",
+            model_version="gpt-4o-mini",
         )
         before_block = len(calls)
         blocked = None
@@ -440,6 +450,9 @@ def scenario_egress(path: Path) -> ShowcaseResult:
                 actor_id=AGENT_NAME,
                 actor_type=ActorType.AGENT,
                 use_case="ELIGIBILITY_CHECK",
+                provider="openai",
+                model="gpt-4o-mini",
+                model_version="gpt-4o-mini",
             )
         except EgressDenied as exc:
             block_error = str(exc)
@@ -774,14 +787,23 @@ def scenario_approval(path: Path) -> ShowcaseResult:
             correlation_id=dual.evaluation.request_id,
         )
         session.refresh(dual_approval)
-        marked_only = continue_run(
-            session,
-            dual_run.id,
-            {dual_approval.id or 0: True},
-            evidence=writer,
-            registry=registry,
-            approver_name=MARKER,
-        )
+        # 0.4: the marker cannot also be the confirming party. continue_run
+        # refuses, and the run stays held.
+        from kognita.approvals import ApprovalError
+
+        marked_refusal = ""
+        try:
+            marked_only = continue_run(
+                session,
+                dual_run.id,
+                {dual_approval.id or 0: True},
+                evidence=writer,
+                registry=registry,
+                approver_name=MARKER,
+            )
+        except ApprovalError as exc:
+            marked_refusal = str(exc)
+            marked_only = None
 
         release_run = Run()
         release = run_governed(
@@ -831,7 +853,8 @@ def scenario_approval(path: Path) -> ShowcaseResult:
     story.fact("granted_executed", resumed.data == "ran draft_client_letter")
     story.fact("confirmation_required", confirmation_required)
     story.fact("marked_status", marked_status)
-    story.fact("marked_executed", marked_only.data is not None)
+    story.fact("marked_executed", marked_only is not None and marked_only.data is not None)
+    story.fact("marked_refusal", marked_refusal)
     story.fact("confirmed_status", confirmed_status)
     story.fact("confirmed_executed", released.data == "ran release_structured_note")
     story.fact("ran", list(ran))
@@ -844,8 +867,10 @@ def scenario_approval(path: Path) -> ShowcaseResult:
     story.say(f"granted approval     executed {resumed.data == 'ran draft_client_letter'}")
     story.say(
         f"two-signature        marked by {MARKER}  "
-        f"status {marked_status}  executed {marked_only.data is not None}"
+        f"status {marked_status}  executed {marked_only is not None and marked_only.data is not None}"
     )
+    if marked_refusal:
+        story.say(f"cite                 {marked_refusal}")
     story.say(
         f"confirmed by         {CONFIRMER}  "
         f"status {confirmed_status}  "
@@ -1160,10 +1185,11 @@ class _Spy:
         return 200, {"content-type": "application/json"}, self.body
 
 
-def _chat_body(content: str) -> bytes:
+def _chat_body(content: str, model: str = "eastwind-local") -> bytes:
+    """A chat body for the in-process gateway, whose upstream is 127.0.0.1."""
     return json.dumps(
         {
-            "model": "eastwind-stand-in",
+            "model": model,
             "messages": [{"role": "user", "content": content}],
         }
     ).encode("utf-8")
@@ -1200,6 +1226,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
     engine = _engine(path)
     with Session(engine) as session:
         seed_agent(session)
+        register_usecases(session)
         session.commit()
     engine.dispose()
 
@@ -1308,7 +1335,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
     benign = _chat_body("House guidance on the SGD money market.")
     identifying = _chat_body(prompt)
     local_reply = json.dumps(
-        {"model": "eastwind-stand-in", "choices": [{"message": {"content": "the market is open"}}]}
+        {"model": "eastwind-local", "choices": [{"message": {"content": "the market is open"}}]}
     ).encode()
 
     with Session(engine) as session:
@@ -1479,7 +1506,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
     )
     story.say(
         "The serve database holds the agent and no regime rows. "
-        "kognita serve has no pack argument, so those rows would all be evaluated."
+        "Without --pack, kognita serve would evaluate every regime row, so none are seeded."
     )
     story.say(f"Store   {path}")
     return story.result

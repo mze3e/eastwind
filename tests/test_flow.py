@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from sqlalchemy import text
 from sqlmodel import Session, select
 
 from kognita import (
@@ -132,9 +133,18 @@ def test_tamper_breaks_the_chain():
     engine = make_engine(":memory:")
     run_scenario("deny", engine=engine, call_model=False)
     with Session(engine) as session:
-        event = session.exec(select(EvidenceEvent)).one()
-        event.payload = {"tampered": True}
-        session.add(event)
+        event = session.exec(
+            select(EvidenceEvent).order_by(EvidenceEvent.sequence)
+        ).first()
+        # kognita 0.4 refuses an UPDATE on evidence rows. Stand in for someone
+        # with raw write access to the store: lift the trigger, then edit.
+        connection = session.connection()
+        connection.exec_driver_sql("DROP TRIGGER IF EXISTS evidence_events_no_update")
+        connection.execute(
+            text("UPDATE evidence_events SET payload = :payload WHERE id = :id"),
+            {"payload": '{"tampered": true}', "id": event.id},
+        )
         session.commit()
+        session.expire_all()
         with pytest.raises(ChainBreak, match="payload does not match its hash"):
             verify_chain(session)

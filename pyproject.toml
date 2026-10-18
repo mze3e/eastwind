@@ -15,7 +15,7 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
-    "kognita[openai]>=0.3.0,<0.4",
+    "kognita[openai]>=0.4.0,<0.5",
 ]
 
 [project.optional-dependencies]
