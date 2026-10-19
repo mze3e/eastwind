@@ -57,6 +57,8 @@ def test_classify_does_not_let_text_widen_a_decision(tmp_path: Path):
     assert facts["ask_vague_confidence"] < 0.8
     assert facts["ask_clear_outcome"] == "ALLOW"
     assert facts["ask_clear_label"] == "C2"
+    assert facts["ask_clear_results"] > 0
+    assert facts["ask_clear_citations"] > 0
     assert facts["ask_clear_confidence"] >= 0.8
     assert facts["plain_outcome"] == "DENY"
     assert facts["plain_label"] == "C2"
@@ -68,10 +70,10 @@ def test_classify_does_not_let_text_widen_a_decision(tmp_path: Path):
     assert facts["governed_clear_label"] == "C2"
     assert facts["governed_vague_outcome"] == "ESCALATE"
     assert facts["governed_vague_executed"] is False
-    assert facts["typed_executed"] is True
-    assert facts["typed_label"] == "C0"
-    assert facts["typed_classifier_absent"] is True
-    assert facts["tools_ran"] == ["classify_tool", "typed_classification"]
+    assert facts["typed_executed"] is False
+    assert facts["typed_label"] == "C2"
+    assert facts["typed_classifier_absent"] is False
+    assert facts["tools_ran"] == ["classify_tool"]
 
 
 def test_budget_cites_each_exceeded_cap(tmp_path: Path):

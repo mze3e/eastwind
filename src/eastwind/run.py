@@ -42,9 +42,11 @@ from kognita import (
 )
 from kognita.db import session_scope
 from kognita.retrieval import ceiling_for
+from kognita.usecases import load_register
 from kognita.vocabulary import EventType
 
 from eastwind.pack import (
+    _access,
     HOUSE_QUERY,
     SCENARIOS,
     EastwindPack,
@@ -126,6 +128,7 @@ def run_scenario(
 
     with session_scope(engine) as session:
         seed_store(session, embedder)
+        envelope = _access(session, envelope)
         subjects = PACK.load_subjects(envelope, session)
         attributes = PACK.resolve_attributes(envelope, subjects)
         evaluation = decide(
@@ -136,6 +139,7 @@ def run_scenario(
             rules=PACK.rules(),
             purposes=("ELIGIBILITY_CHECK",),
             engages=PACK.engages,
+            usecases=load_register(session),
         )
         evaluation = record(
             session,

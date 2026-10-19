@@ -7,8 +7,10 @@ from sqlmodel import Session
 
 from kognita import CheckResult, Outcome, create_all, decide, load_snapshot, make_engine
 from kognita.testing import ConformanceCase, Harness
+from kognita.usecases import load_register
 
 from eastwind.pack import (
+    _access,
     ALLOW,
     DENY,
     PURPOSES,
@@ -26,6 +28,7 @@ def _evaluate(envelope):
     with Session(engine) as session:
         seed_store(session)
         session.commit()
+        envelope = _access(session, envelope)
         subjects = PACK.load_subjects(envelope, session)
         attributes = PACK.resolve_attributes(envelope, subjects)
         return decide(
@@ -36,6 +39,7 @@ def _evaluate(envelope):
             rules=PACK.rules(),
             purposes=PURPOSES,
             engages=PACK.engages,
+            usecases=load_register(session),
         )
 
 
@@ -97,6 +101,7 @@ def test_decide_writes_nothing():
             rules=PACK.rules(),
             purposes=PURPOSES,
             engages=PACK.engages,
+            usecases=load_register(session),
         )
         assert len(session.exec(select(GovernanceDecision)).all()) == before_decisions
         assert len(session.exec(select(EvidenceEvent)).all()) == before_events
@@ -107,7 +112,14 @@ class TestEastwindConformance(ConformanceCase):
 
     @pytest.fixture(autouse=True)
     def _bind(self):
-        self.harness = Harness(pack=EastwindPack(), purposes=PURPOSES, seed=seed_store)
+        from eastwind.showcase import _conformance_seed
+        self.harness = Harness(pack=EastwindPack(), purposes=PURPOSES, seed=_conformance_seed)
         self.allow_envelope = ALLOW.envelope()
         self.deny_envelope = DENY.envelope()
         self.human_envelope = client_envelope("draft_client_letter")
+
+        with self.harness.session() as session:
+            self.allow_envelope = _access(session, self.allow_envelope, at=self.harness.now)
+            self.deny_envelope = _access(session, self.deny_envelope, at=self.harness.now)
+            self.human_envelope = _access(session, self.human_envelope, at=self.harness.now)
+            session.commit()

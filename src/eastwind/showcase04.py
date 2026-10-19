@@ -20,6 +20,8 @@ from kognita.models import Policy
 from kognita.vocabulary import Classification
 
 from eastwind.pack import (
+    _access,
+    _headers,
     AGENT_NAME,
     AGENT_OWNER,
     PURPOSES,
@@ -84,7 +86,7 @@ def _registry(ran: list[str] | None = None) -> ToolRegistry:
 def _governed(session: Session, writer: EvidenceWriter, registry: ToolRegistry, **kw: Any) -> Any:
     return run_governed(
         session,
-        client_envelope("check_eligibility", **kw),
+        _access(session, client_envelope("check_eligibility", **kw)),
         registry=registry,
         evidence=writer,
         pack=PACK,
@@ -459,7 +461,7 @@ def scenario_communicate(path: Path) -> Any:
         run = Run()
         result = run_governed(
             session,
-            client_envelope("check_eligibility"),
+            _access(session, client_envelope("check_eligibility")),
             registry=_registry(),
             evidence=writer,
             pack=PACK,
@@ -761,7 +763,7 @@ def scenario_breaker(path: Path) -> Any:
             response = gateway.handle(
                 "POST",
                 "/v1/chat/completions",
-                {"agent_name": AGENT_NAME},
+                _headers(session),
                 _chat_body("House guidance on the SGD money market."),
                 session=session,
             )
@@ -1113,7 +1115,7 @@ def scenario_recorder(path: Path) -> Any:
             run = Run()
             run_governed(
                 session,
-                client_envelope("check_eligibility", **kwargs),
+                _access(session, client_envelope("check_eligibility", **kwargs)),
                 registry=registry,
                 evidence=writer,
                 pack=PACK,
@@ -1212,7 +1214,7 @@ def scenario_ingest(path: Path) -> Any:
     if not _docling_installed():
         story.fact("skipped", "docling extra not installed")
         story.say("skipped  the [docling] extra is not installed.")
-        story.say("Install it with:  pip install 'kognita[docling]>=0.4,<0.5'")
+        story.say("Install it with:  pip install 'kognita[docling]>=0.5.1,<0.6'")
         story.say("Core kognita does not import Docling, so nothing else is affected.")
         return story.result
 
@@ -1305,7 +1307,10 @@ def scenario_adapters(path: Path) -> Any:
         return f"eligibility answered for {client}"
 
     with Session(engine) as session:
+        access = _access(session, client_envelope("check_eligibility"))
         binding = Binding(
+            agent_credential=access.context["_agent_credential"],
+            delegation_id=access.delegation_id,
             session=session,
             evidence=writer,
             pack=PACK,
