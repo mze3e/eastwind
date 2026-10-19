@@ -14,7 +14,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -49,6 +49,7 @@ from kognita import (
     run_governed,
     supersede_policy,
 )
+from kognita.usecases import load_register
 from kognita.approvals import confirm, mark
 from kognita.evidence import ChainBreak
 from kognita.exceptions import PolicyEditError
@@ -66,6 +67,8 @@ from eastwind.local_servers import (
     wait_for_port,
 )
 from eastwind.pack import (
+    _access,
+    _headers,
     AGENT_NAME,
     AGENT_OWNER,
     CLIENTS,
@@ -103,6 +106,8 @@ SCENARIO_ORDER = (
     "packs",
     "recorder",
     "adapters",
+    "autonomy", "credentials", "authority", "blastradius", "anomaly",
+    "taint", "triggers", "providerkey", "proposal", "recovery",
 )
 
 MARCH = datetime(2026, 3, 15, tzinfo=timezone.utc)
@@ -217,6 +222,7 @@ def run_named(name: str, root: Path) -> ShowcaseResult:
         "mcp": scenario_mcp,
         "conformance": scenario_conformance,
         **_v04_runners(),
+        **_v05_runners(),
     }
     try:
         runner = runners[name]
@@ -245,7 +251,13 @@ def _v04_runners() -> dict[str, Any]:
     return {name: getattr(v04, f"scenario_{name}") for name in V04_SCENARIOS}
 
 
-V04_SCENARIOS = SCENARIO_ORDER[SCENARIO_ORDER.index("register") :]
+V04_SCENARIOS = SCENARIO_ORDER[SCENARIO_ORDER.index("register") : SCENARIO_ORDER.index("autonomy")]
+V05_SCENARIOS = SCENARIO_ORDER[SCENARIO_ORDER.index("autonomy") :]
+
+
+def _v05_runners() -> dict[str, Any]:
+    from eastwind import showcase05 as v05
+    return {name: getattr(v05, f"scenario_{name}") for name in V05_SCENARIOS}
 
 
 def run_all(root: Path) -> list[ShowcaseResult]:
@@ -330,16 +342,18 @@ def scenario_authorise(path: Path) -> ShowcaseResult:
 
     with Session(engine) as session:
         envelope = client_envelope("check_eligibility")
+        envelope = _access(session, envelope)
         subjects = PACK.load_subjects(envelope, session)
         attributes = PACK.resolve_attributes(envelope, subjects)
         missing = decide(
-            envelope,
+            replace(envelope, purpose=""),
             load_snapshot(session),
             attributes=attributes,
             subjects=subjects,
             rules=PACK.rules(),
             purposes=(),
             engages=PACK.engages,
+            usecases=load_register(session),
         )
     story.fact("purpose_missing_outcome", missing.outcome.value)
     story.say(
@@ -361,6 +375,7 @@ def scenario_authorise(path: Path) -> ShowcaseResult:
             rules=PACK.rules(),
             purposes=PURPOSES,
             engages=PACK.engages,
+            usecases=load_register(session),
         )
     story.fact("unregistered_outcome", unregistered.outcome.value)
     registry = next(check for check in unregistered.checks if check.check == "AGENT_REGISTRY")
@@ -385,6 +400,7 @@ def scenario_authorise(path: Path) -> ShowcaseResult:
                 rules=PACK.rules(),
                 purposes=PURPOSES,
                 engages=PACK.engages,
+                usecases=load_register(session),
             )
         finally:
             agent.kill_switch = False
@@ -522,7 +538,7 @@ def scenario_egress(path: Path) -> ShowcaseResult:
 
 
 def scenario_classify(path: Path) -> ShowcaseResult:
-    """ask() and run_governed() classify free text. A typed label wins."""
+    """ask() and run_governed() classify free text. Typed labels are floors."""
     story = _Story("classify", "classifier-derived envelopes")
     engine, writer = _seeded(path)
     embedder = HashingEmbedder()
@@ -540,71 +556,79 @@ def scenario_classify(path: Path) -> ShowcaseResult:
         vague = ask(
             session,
             VAGUE,
-            client_envelope("classify_question"),
+            _access(session, client_envelope("classify_question")),
             pack=PACK,
             embedder=embedder,
+            run=Run(),
             evidence=writer,
             purposes=PURPOSES,
         )
         clear = ask(
             session,
             PLAIN_EMAIL,
-            client_envelope("classify_question"),
+            _access(session, client_envelope("classify_question")),
             pack=PACK,
             embedder=embedder,
+            run=Run(),
             evidence=writer,
             purposes=PURPOSES,
         )
         plain = ask(
             session,
             PLAIN_EMAIL,
-            client_envelope("injection_question"),
+            _access(session, client_envelope("injection_question")),
             pack=PACK,
             embedder=embedder,
+            run=Run(),
             evidence=writer,
             purposes=PURPOSES,
         )
         injected = ask(
             session,
             INJECTED,
-            client_envelope("injection_question"),
+            _access(session, client_envelope("injection_question")),
             pack=PACK,
             embedder=embedder,
+            run=Run(),
             evidence=writer,
             purposes=PURPOSES,
         )
         claimed = ask(
             session,
             CLAIMED,
-            client_envelope("injection_question"),
+            _access(session, client_envelope("injection_question")),
             pack=PACK,
             embedder=embedder,
+            run=Run(),
             evidence=writer,
             purposes=PURPOSES,
         )
         governed_clear = run_governed(
             session,
-            client_envelope("classify_tool", arguments={"note": PLAIN_EMAIL}),
+            _access(session, client_envelope("classify_tool", arguments={"note": PLAIN_EMAIL})),
             registry=registry,
             evidence=writer,
             pack=PACK,
             purposes=PURPOSES,
+            run=Run(),
         )
         governed_vague = run_governed(
             session,
-            client_envelope("classify_tool", arguments={"note": VAGUE}),
+            _access(session, client_envelope("classify_tool", arguments={"note": VAGUE})),
             registry=registry,
             evidence=writer,
             pack=PACK,
             purposes=PURPOSES,
+            run=Run(),
         )
         typed = run_governed(
             session,
-            client_envelope("typed_classification", arguments={"note": INJECTED}),
+            _access(session, client_envelope("typed_classification", arguments={"note": INJECTED})),
             registry=registry,
             evidence=writer,
             pack=PACK,
             purposes=PURPOSES,
+            run=Run(),
         )
         session.commit()
 
@@ -620,6 +644,8 @@ def scenario_classify(path: Path) -> ShowcaseResult:
     story.fact("ask_vague_confidence", vague_attrs.get("classifier", {}).get("confidence"))
     story.fact("ask_clear_outcome", clear.outcome.value)
     story.fact("ask_clear_label", clear_attrs.get("classification"))
+    story.fact("ask_clear_results", len(clear.results))
+    story.fact("ask_clear_citations", len(clear.citations))
     story.fact("ask_clear_confidence", clear_attrs.get("classifier", {}).get("confidence"))
     story.fact("plain_outcome", plain.outcome.value)
     story.fact("plain_label", plain_attrs.get("classification"))
@@ -661,7 +687,7 @@ def scenario_classify(path: Path) -> ShowcaseResult:
     )
     story.say(
         f"typed C0      {typed.outcome.value} executed {typed.data is not None}  "
-        "classifier was not consulted"
+        "classification is a floor; sensitive text raises it and is refused"
     )
     story.say(f"Store   {path}")
     return story.result
@@ -684,11 +710,11 @@ def scenario_budget(path: Path) -> ShowcaseResult:
     with Session(engine) as session:
         calls = Run(max_calls=1)
         first = run_governed(
-            session, envelope, registry=registry, evidence=writer, pack=PACK,
+            session, _access(session, envelope), registry=registry, evidence=writer, pack=PACK,
             purposes=PURPOSES, run=calls,
         )
         second = run_governed(
-            session, envelope, registry=registry, evidence=writer, pack=PACK,
+            session, _access(session, envelope), registry=registry, evidence=writer, pack=PACK,
             purposes=PURPOSES, run=calls,
         )
         clock = Run(
@@ -696,17 +722,17 @@ def scenario_budget(path: Path) -> ShowcaseResult:
             started_at=datetime.now(timezone.utc) - timedelta(seconds=30),
         )
         wall = run_governed(
-            session, envelope, registry=registry, evidence=writer, pack=PACK,
+            session, _access(session, envelope), registry=registry, evidence=writer, pack=PACK,
             purposes=PURPOSES, run=clock,
         )
         ceiling = Run(classification_ceiling=Classification.C1)
         above = run_governed(
-            session, envelope, registry=registry, evidence=writer, pack=PACK,
+            session, _access(session, envelope), registry=registry, evidence=writer, pack=PACK,
             purposes=PURPOSES, run=ceiling,
         )
         priced = Run(max_cost_usd=0.01)
         costly = run_governed(
-            session, envelope, registry=registry, evidence=writer, pack=PACK,
+            session, _access(session, envelope), registry=registry, evidence=writer, pack=PACK,
             purposes=PURPOSES, run=priced, cost_usd=0.05,
         )
         session.commit()
@@ -759,7 +785,7 @@ def scenario_approval(path: Path) -> ShowcaseResult:
         hold_run = Run()
         held = run_governed(
             session,
-            client_envelope("draft_client_letter"),
+            _access(session, client_envelope("draft_client_letter")),
             registry=registry,
             evidence=writer,
             pack=PACK,
@@ -782,7 +808,7 @@ def scenario_approval(path: Path) -> ShowcaseResult:
         grant_run = Run()
         waiting = run_governed(
             session,
-            client_envelope("draft_client_letter"),
+            _access(session, client_envelope("draft_client_letter", arguments={"attempt": 2})),
             registry=registry,
             evidence=writer,
             pack=PACK,
@@ -804,7 +830,7 @@ def scenario_approval(path: Path) -> ShowcaseResult:
         dual_run = Run()
         dual = run_governed(
             session,
-            client_envelope("release_structured_note"),
+            _access(session, client_envelope("release_structured_note")),
             registry=registry,
             evidence=writer,
             pack=PACK,
@@ -843,7 +869,7 @@ def scenario_approval(path: Path) -> ShowcaseResult:
         release_run = Run()
         release = run_governed(
             session,
-            client_envelope("release_structured_note"),
+            _access(session, client_envelope("release_structured_note", arguments={"attempt": 2})),
             registry=registry,
             evidence=writer,
             pack=PACK,
@@ -929,7 +955,7 @@ def scenario_replay(path: Path) -> ShowcaseResult:
         call_model=True,
     )
     request_id = result.evaluation.request_id
-    envelope = result.scenario.envelope()
+    envelope = result.evaluation.envelope
 
     def _replay(session: Session) -> Any:
         subjects = PACK.load_subjects(envelope, session)
@@ -939,6 +965,7 @@ def scenario_replay(path: Path) -> ShowcaseResult:
             envelope,
             rules=PACK.rules(),
             purposes=PURPOSES,
+            usecases=load_register(session, as_of=result.evaluation.as_of),
             engages=PACK.engages,
             subjects=subjects,
         )
@@ -1114,14 +1141,37 @@ def _mismatch(replay: Any, session: Session) -> str:
 def scenario_effective(path: Path) -> ShowcaseResult:
     """What would this have decided in March, after the April supersede."""
     story = _Story("effective", "effective-dated policy")
-    engine, writer = _seeded(path)
+    engine = _engine(path)
+    with Session(engine) as session:
+        seed_agent(session)
+        register_usecases(session, at=MARCH - timedelta(days=30))
+        seed_store(session)
+        session.commit()
+    writer = EvidenceWriter(engine)
     envelope = client_envelope(
         "historical_eligibility",
         client_id="CL-2002",
         instrument_id="INS-MMF",
-        principal="rm.hk@eastwind.example",
+        principal="rm.sg@eastwind.example",
         actor_location="HK",
     )
+
+    # Historical decisions need authority valid at both observation dates.
+    # This explicit owner-issued task is bounded to the workshop window.
+    from kognita.authority import Delegation, delegate, grant_to
+    from kognita.credentials import issue
+    with Session(engine) as session:
+        scope = {"client": ["CL-2002"], "instrument": ["INS-MMF"]}
+        grant_to(envelope.principal, "read", timedelta(days=365), scope,
+                 session=session, evidence=writer, actor_id=AGENT_OWNER, now=MARCH)
+        did = delegate(session, Delegation(human=envelope.principal, agent=AGENT_NAME,
+            purpose=envelope.purpose, client="CL-2002", allowed_actions=["read"],
+            allowed_data=scope, valid_from=MARCH, valid_until=OCTOBER + timedelta(days=1),
+            jurisdiction="HK", task_ref="eligibility assessment"),
+            evidence=writer, actor_id=envelope.principal, now=MARCH)
+        credential = issue(session, AGENT_NAME, evidence=writer, actor_id=AGENT_OWNER)
+        envelope = replace(envelope, delegation_id=did, context={"_agent_credential": credential})
+        session.commit()
 
     def _at(session: Session, when: datetime, *, record: bool) -> Any:
         subjects = PACK.load_subjects(envelope, session)
@@ -1134,6 +1184,7 @@ def scenario_effective(path: Path) -> ShowcaseResult:
             rules=PACK.rules(),
             purposes=PURPOSES,
             engages=PACK.engages,
+            usecases=load_register(session, as_of=when),
             as_of=when,
         )
         if record:
@@ -1171,6 +1222,7 @@ def scenario_effective(path: Path) -> ShowcaseResult:
             session,
             march.request_id,
             envelope,
+            usecases=load_register(session, as_of=MARCH),
             rules=PACK.rules(),
             purposes=PURPOSES,
             engages=PACK.engages,
@@ -1246,7 +1298,7 @@ def _gateway(
             principal="rm.sg@eastwind.example",
             purpose="ELIGIBILITY_CHECK",
             agent_names=frozenset({AGENT_NAME}),
-            actor_location="",
+            actor_location="SG",
         ),
         pack=PACK,
         purposes=PURPOSES,
@@ -1262,6 +1314,11 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
     with Session(engine) as session:
         seed_agent(session)
         register_usecases(session)
+        headers = _headers(session)
+        run = Run()
+        from kognita.models import RunRecord
+        session.add(RunRecord(id=run.id))
+        headers["run_id"] = run.id
         session.commit()
     engine.dispose()
 
@@ -1285,6 +1342,8 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
         AGENT_NAME,
         "--principal",
         "rm.sg@eastwind.example",
+        "--actor-location",
+        "SG",
         "--db",
         str(path),
         "--host",
@@ -1307,7 +1366,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
     )
     try:
         wait_for_port(port)
-        from openai import OpenAI
+        from openai import OpenAI, Omit
 
         client = OpenAI(
             api_key="workshop",
@@ -1318,7 +1377,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
         completion = client.chat.completions.create(
             model="eastwind-stand-in",
             messages=[{"role": "user", "content": prompt}],
-            extra_headers={"agent_name": AGENT_NAME},
+            extra_headers={**headers, "Authorization": Omit()},
         )
         caller_text = completion.choices[0].message.content or ""
         missing_status, missing_body = _post_json(
@@ -1385,7 +1444,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
         closed_response = closed.handle(
             "POST",
             "/v1/chat/completions",
-            {"agent_name": AGENT_NAME},
+            headers,
             benign,
             session=session,
         )
@@ -1402,7 +1461,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
         local_response = local_gateway.handle(
             "POST",
             "/v1/chat/completions",
-            {"agent_name": AGENT_NAME},
+            headers,
             benign,
             session=session,
         )
@@ -1420,7 +1479,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
         remote_response = remote.handle(
             "POST",
             "/v1/chat/completions",
-            {"agent_name": AGENT_NAME},
+            headers,
             benign,
             session=session,
         )
@@ -1435,7 +1494,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
         c2_response = c2.handle(
             "POST",
             "/v1/chat/completions",
-            {"agent_name": AGENT_NAME, "classification": "C0"},
+            {**headers, "classification": "C0"},
             identifying,
             session=session,
         )
@@ -1449,7 +1508,7 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
             principal="rm.sg@eastwind.example",
             purpose="ELIGIBILITY_CHECK",
             system_triggers=frozenset({"nightly-refresh"}),
-            actor_location="",
+            actor_location="SG",
         ),
         pack=PACK,
         purposes=PURPOSES,
@@ -1588,6 +1647,9 @@ def scenario_mcp(path: Path) -> ShowcaseResult:
     """``kognita serve --mcp`` in front of a local Eastwind tool server."""
     story = _Story("mcp", "MCP proxy")
     engine, _writer = _seeded(path)
+    with Session(engine) as session:
+        headers = _headers(session)
+        session.commit()
     engine.dispose()
     backend = McpStandIn()
     thread = serve_in_thread(backend)
@@ -1604,7 +1666,7 @@ def scenario_mcp(path: Path) -> ShowcaseResult:
                     "principal": "rm.sg@eastwind.example",
                     "purpose": "ELIGIBILITY_CHECK",
                     "agent_names": [AGENT_NAME],
-                    "actor_location": "",
+                    "actor_location": "SG",
                 },
             },
             indent=2,
@@ -1623,7 +1685,6 @@ def scenario_mcp(path: Path) -> ShowcaseResult:
         str(port),
     )
     process = subprocess.Popen(command, stdout=log_handle, stderr=subprocess.STDOUT)
-    headers = {"agent_name": AGENT_NAME}
     try:
         wait_for_port(port)
         allowed = _rpc(port, "house_view", {"note": "Singapore money market eligibility"}, headers)
@@ -1692,10 +1753,17 @@ def _rpc_text(body: dict[str, Any]) -> str:
     return _outcome_of(body)
 
 
+def _conformance_seed(session: Session) -> None:
+    from kognita.testing.harness import FROZEN_NOW
+    seed_agent(session)
+    register_usecases(session, at=FROZEN_NOW - timedelta(days=30))
+    seed_store(session)
+
+
 def scenario_conformance(path: Path) -> ShowcaseResult:
     """Run kognita's conformance methods against the Eastwind pack."""
     story = _Story("conformance", "conformance kit")
-    harness = Harness(pack=PACK, purposes=PURPOSES, seed=seed_store)
+    harness = Harness(pack=PACK, purposes=PURPOSES, seed=_conformance_seed)
     case = ConformanceCase()
     case.harness = harness
     case.allow_envelope = client_envelope("check_eligibility")
@@ -1707,6 +1775,11 @@ def scenario_conformance(path: Path) -> ShowcaseResult:
         actor_location="AE",
     )
     case.human_envelope = client_envelope("draft_client_letter")
+    with harness.session() as session:
+        case.allow_envelope = _access(session, case.allow_envelope, at=harness.now)
+        case.deny_envelope = _access(session, case.deny_envelope, at=harness.now)
+        case.human_envelope = _access(session, case.human_envelope, at=harness.now)
+        session.commit()
     methods = [
         name
         for name in dir(_Case)

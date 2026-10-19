@@ -50,6 +50,7 @@ class OpenAIStandIn(ThreadingHTTPServer):
 
     def __init__(self) -> None:
         self.received = []
+        self.authorization: list[str | None] = []
         super().__init__(("127.0.0.1", 0), _OpenAIHandler)
         self.daemon_threads = True
 
@@ -65,9 +66,12 @@ class _OpenAIHandler(_Quiet):
         body = self.rfile.read(length) if length else b""
         server: OpenAIStandIn = self.server  # type: ignore[assignment]
         server.received.append(body)
+        server.authorization.append(self.headers.get("Authorization"))
         content = "House guidance noted."
+        model = "eastwind-stand-in"
         try:
             payload = json.loads(body.decode("utf-8"))
+            model = str(payload.get("model") or model)
             messages = payload.get("messages") or []
             for message in reversed(messages):
                 if isinstance(message, dict) and message.get("role") == "user":
@@ -79,8 +83,9 @@ class _OpenAIHandler(_Quiet):
             content = "unreadable"
         reply = {
             "id": "chatcmpl-eastwind",
+            "provider_details": "not approved for delivery",
             "object": "chat.completion",
-            "model": "eastwind-stand-in",
+            "model": model,
             "choices": [
                 {
                     "index": 0,

@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from weakref import WeakKeyDictionary
 
 from sqlmodel import Session, select
 
@@ -237,7 +238,7 @@ class EastwindPack:
         """
         loaded: dict[str, Any] = {}
         for kind, ref in envelope.all_subjects().items():
-            table = CLIENTS if kind == "client" else INSTRUMENTS if kind == "instrument" else {}
+            table = CLIENTS if kind == "client" else INSTRUMENTS if kind in {"instrument", "product"} else {}
             row = table.get(str(ref))
             if row is None:
                 raise LookupError(f"{kind} {ref!r} is not in the Eastwind Private pack")
@@ -256,8 +257,7 @@ class EastwindPack:
             "product_kind": instrument.get("kind"),
             "instrument_origin": instrument.get("origin"),
         }
-        # A typed handling label is the pack's, not the model's. The classifier
-        # must not overwrite it, including when the argument text names another.
+        # A typed handling label is a floor. Sensitive text can raise it.
         if envelope.tool == "typed_classification":
             attributes["classification"] = Classification.C0.value
         return attributes
@@ -271,7 +271,7 @@ class EastwindPack:
         if policy.applies_to and policy.applies_to != attrs.get("product_kind"):
             return False
         if policy.regime == "MAS_SG":
-            return attrs.get("actor_location") == "SG"
+            return attrs.get("actor_location") == "SG" and attrs.get("client_domicile") is not None
         if policy.regime == "HK_SFC":
             return attrs.get("product_kind") == "STRUCTURED_NOTE"
         if policy.regime == "DIFC_DFSA":
@@ -296,19 +296,97 @@ class EastwindPack:
 
 def seed_agent(session: Session) -> None:
     """Register ``eligibility-advisor`` once. The kill switch stays off."""
-    if session.exec(select(Agent).where(Agent.name == AGENT_NAME)).first() is not None:
+    existing = session.exec(select(Agent).where(Agent.name == AGENT_NAME)).first()
+    if existing is not None and all(getattr(existing, key) is not None for key in (
+        "deployment_date", "model", "principal", "tool_allowlist", "deployment_hash",
+    )):
         return
-    session.add(
-        Agent(
-            name=AGENT_NAME,
-            version="0.1.0",
-            owner_exec=AGENT_OWNER,
-            risk_class="HIGH",
-            materiality_tier="T2",
-            kill_switch=False,
-        )
+    from kognita import EvidenceWriter
+    from kognita.registry import register, approve_deployment
+
+    writer = EvidenceWriter(session.get_bind())
+    tools = (
+        "check_eligibility", "classify_question", "injection_question", "classify_tool",
+        "typed_classification", "draft_client_letter", "release_structured_note",
+        "offer_autocall", "historical_eligibility", "house_view", "vague_note",
+        "model_call",
     )
-    session.flush()
+    # These tools read or generate a result; none sends a message or applies a
+    # transaction. Human approval policies still hold the letter and release.
+    permissions = {name: {"verb": "read", "required_level": 0,
+                         "system": "eastwind", "permissions": ["read"]} for name in tools}
+    register(
+        session, name=AGENT_NAME, owner_exec=AGENT_OWNER,
+        purpose=PURPOSES[0], use_cases=list(PURPOSES), principal="rm.sg@eastwind.example",
+        permitted_systems=["eastwind"], tool_allowlist=permissions,
+        autonomy_level=0, environment="local", model="eastwind-stand-in",
+        deployment_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        review_date=datetime.now(timezone.utc) + timedelta(days=365),
+        field_allowlist={PURPOSES[0]: [
+            "$", "id", "object", "model", "choices.index", "choices.message.role",
+            "choices.message.content", "choices.finish_reason", "usage.prompt_tokens",
+            "usage.completion_tokens", "usage.total_tokens", "content.type", "content.text",
+            "summary.$", "citations.label", "citations.classification", "graph.nodes", "graph.edges",
+            "results.id", "results.title", "results.snippet", "results.kind", "results.classification",
+            "results.classification_rule", "results.source_label", "results.document", "results.page",
+            "results.section_path.$", "results.charspan.$", "results.block_charspan.$", "results.score",
+        ]}, evidence=writer, actor_id=AGENT_OWNER,
+    )
+    approve_deployment(session, AGENT_NAME, evidence=writer, actor_id=AGENT_OWNER,
+        deployment={"system_prompt": "",
+                    "instructions": "", "tools": [],
+                    "permissions": permissions, "data_sources": ["Eastwind house view"],
+                    "orchestration": "one governed call", "memory_behaviour": "run scoped"})
+
+
+_access_cache = WeakKeyDictionary()
+
+
+def _access(session: Session, envelope: Envelope, *, at: datetime | None = None) -> Envelope:
+    """Host-issued workload proof and an attenuated, short-lived human task."""
+    from dataclasses import replace
+    from kognita import EvidenceWriter
+    from kognita.authority import Delegation, delegate, grant_to
+    from kognita.credentials import issue
+
+    if not envelope.agent_name:
+        return envelope
+    if envelope.context.get("_agent_credential"):
+        return envelope
+    key = (envelope.agent_name, envelope.principal, envelope.actor_location,
+           tuple(sorted(envelope.all_subjects().items())), at)
+    cache = _access_cache.setdefault(session.get_bind(), {})
+    if key in cache:
+        delegation, secret = cache[key]
+        return replace(envelope, delegation_id=delegation,
+                       context={**envelope.context, "_agent_credential": secret})
+    writer = EvidenceWriter(session.get_bind())
+    when = at or datetime.now(timezone.utc)
+    scope = {kind: [ref] for kind, ref in envelope.all_subjects().items()}
+    client = scope.get("client", ["CL-1001"])[0]
+    scope.setdefault("client", [client])
+    if envelope.tool == "model_call":
+        scope["model"] = ["eastwind-local", "eastwind-stand-in"]
+    grant_to(envelope.principal, "read", timedelta(hours=2), scope,
+             session=session, evidence=writer, actor_id=AGENT_OWNER, now=when)
+    delegation = delegate(session, Delegation(
+        human=envelope.principal, agent=envelope.agent_name, purpose=envelope.purpose,
+        client=client, allowed_actions=["read"], allowed_data=scope,
+        valid_from=when, valid_until=when + timedelta(hours=1),
+        jurisdiction=envelope.actor_location, task_ref="eligibility assessment",
+    ), evidence=writer, actor_id=envelope.principal, now=when)
+    secret = issue(session, envelope.agent_name, evidence=writer, actor_id=AGENT_OWNER)
+    cache[key] = (delegation, secret)
+    return replace(envelope, delegation_id=delegation,
+                   context={**envelope.context, "_agent_credential": secret})
+
+
+def _headers(session: Session, *, location: str = "SG") -> dict[str, str]:
+    envelope = _access(session, Envelope(principal="rm.sg@eastwind.example",
+        purpose=PURPOSES[0], tool="model_call", agent_name=AGENT_NAME,
+        actor_location=location))
+    return {"agent_name": AGENT_NAME, "agent_credential": envelope.context["_agent_credential"],
+            "delegation_id": envelope.delegation_id}
 
 
 def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> None:

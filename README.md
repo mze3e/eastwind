@@ -1,8 +1,17 @@
 # Eastwind Private
 
-Workshop demo for **Governed Agents That Survive Audit** (Ahmed Muzammil, AgentCon Singapore). [Kognita](https://github.com/mze3e/kognita) 0.4 decides whether an eligibility question was allowed before any knowledge is retrieved, cites the rule, and keeps a tamper-evident record. The same Eastwind Private pack then walks the rest of that surface: egress, classification, run budgets, human approval, pinned replay, the AI gateway, the MCP proxy, and the conformance kit. The 0.4 beats add the use-case register, the policy language, document ingestion, the interaction record with do-not-contact, governed client communication, outcomes and the review queue, the circuit breaker with revocation and kill-switch drills, packs, the flight recorder, and the framework adapters.
+Workshop demo for **Governed Agents That Survive Audit** (Ahmed Muzammil, AgentCon Singapore). [Kognita](https://github.com/mze3e/kognita) 0.5.1 decides whether an eligibility question was allowed before any knowledge is retrieved, cites the rule, and keeps a tamper-evident record. The same Eastwind Private pack then walks the rest of that surface: egress, classification, run budgets, human approval, pinned replay, the AI gateway, the MCP proxy, and the conformance kit. The 0.4 beats add the use-case register, the policy language, document ingestion, the interaction record with do-not-contact, governed client communication, outcomes and the review queue, the circuit breaker with revocation and kill-switch drills, packs, the flight recorder, and the framework adapters. The ten 0.5 scenarios add autonomy levels, workload credentials and child tasks, delegated authority, blast-radius limits, anomaly containment, taint isolation, system triggers, gateway-held provider keys, document proposals, and retryable recovery.
 
 Eastwind Private, its clients, and every citation below are workshop fiction. They are not legal advice.
+
+This checkout uses kognita 0.5.1 from `/workspace/blk/repo-051`, installed editable in `.venv` (its reported version may still be 0.5.0 before the release bump). While that release is awaiting PyPI, use the existing environment:
+
+```bash
+uv run --no-sync eastwind showcase all --db /tmp/ew-tour
+uv run --no-sync pytest -m "not openai" -q
+```
+
+Both dependency extras require `>=0.5.1,<0.6`. `uv.lock` is deliberately unchanged and awaits a PyPI relock; do that before using the frozen Vercel installation. Avoid `uv sync` in this checkout until then.
 
 ## Projector runbook
 
@@ -27,7 +36,7 @@ The talk page is built when this repository deploys to Vercel. The build runs th
 
 https://eastwind-kognita.vercel.app
 
-`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]>=0.4,<0.5` from `uv.lock`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
+`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]>=0.5.1,<0.6` in `pyproject.toml`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
 
 With `OPENAI_API_KEY` set, use the live call in place of the echo, then verify again:
 
@@ -66,7 +75,7 @@ kognita evidence export --db .eastwind/evidence.db -o audit.json
 - `DIFC_DFSA` — DFSA COB 3; GEN 2 (workshop fiction)
 - `PRODUCT_GOVERNANCE` — Eastwind Private Product Governance Standard s9 (workshop fiction)
 
-The purpose check and the agent registry pass. The outcome is still `DENY`. Retrieval was not called. The model was not called. That request’s evidence is a single `POLICY_DECISION`.
+The register, identity and domain rules all contribute checks. The independent cross-border failures still decide `DENY`. Retrieval was not called. The model was not called. That request’s evidence is a single `POLICY_DECISION`.
 
 **ALLOW — Singapore money market.** An SG relationship manager asks about an accredited Singapore client and a non-complex money-market fund. `decide` returns `ALLOW`. Retrieval then returns the house view visible in zone `SG` at ceiling `C2`. A `C3` steering note that names the client stays in the store. A DFSA note zoned only for `AE` is not returned.
 
@@ -91,7 +100,7 @@ Kognita is the decision engine (`pip install kognita`, and `kognita[openai]` for
 
 1. The envelope names a principal, a purpose, a tool, a location, a client id, and an instrument id. It holds identifiers.
 2. The pack loads those rows so `decide` can see domicile, product kind, and the accredited-investor flag. Names, emails, and account numbers stay out of the attributes.
-3. `decide(envelope, load_snapshot(session), ...)` is pure. `record` appends `POLICY_DECISION`.
+3. `decide(envelope, load_snapshot(session), usecases=load_register(session), ...)` is pure. `record` appends `POLICY_DECISION`.
 4. `DENY` returns. Retrieval does not run. The OpenAI callable is not invoked.
 5. `ALLOW` calls `retrieve` inside the caller's zone and classification ceiling, classifies the prompt with `PatternClassifier`, and passes it to `EgressGuard.send`. The callable is an OpenAI chat completion (`src/eastwind/openai_chat.py`). The guard is the only path to the SDK.
 
@@ -110,23 +119,23 @@ kognita ships the AI gateway (`kognita serve`) and `kognita.adapters.OpenAICompa
 | Client | `CL-1001` Mei Tan, domicile SG, accredited | `CL-2002` Lena Vogel, domicile DE, not accredited |
 | Instrument | `INS-MMF` SGD money market, origin SG | `INS-HK-NOTE` autocall, origin HK |
 
-Regimes engage only when they are in scope. `MAS_SG` engages for an SG actor. `HK_SFC` and product governance engage for a structured note. `DIFC_DFSA` engages for an AE actor looking at a structured note. An un-engaged rule is skipped so it cannot deny a request it does not cover.
+Regimes engage only when they are in scope. `MAS_SG` engages for an SG actor with a resolved client. `HK_SFC` and product governance engage for a structured note. `DIFC_DFSA` engages for an AE actor looking at a structured note. An un-engaged rule is skipped so it cannot deny a request it does not cover.
 
 The agent `eligibility-advisor` is on the registry, accountable to the Head of Conduct, Eastwind Private. An unregistered agent is denied. That case is in the conformance tests.
 
-kognita 0.4 decides every execution path (`run_governed`, `ask`, the MCP proxy and the gateway) against the use-case register, and an empty register denies. `register_usecases()` in `pack.py` registers `ELIGIBILITY_CHECK` through `kognita.usecases` (appetite, register, rating approval by the control function, activation as live, tier 1) 30 days before the store is seeded, so its review date never lapses mid-talk. It approves three model cards: `upstream.eastwind.example/eastwind-stand-in`, `127.0.0.1/eastwind-local` (the in-process gateway beats), and `openai/gpt-4o-mini` (the model the 0.4 beats name on their egress calls). Owners and the control function are workshop fiction.
+kognita 0.5.1 decides every decision and execution path (`run_governed`, `ask`, the MCP proxy and the gateway) against the use-case register, and an empty register denies. `register_usecases()` in `pack.py` registers `ELIGIBILITY_CHECK` through `kognita.usecases` (appetite, register, rating approval by the control function, activation as live, tier 1) 30 days before the store is seeded, so its review date never lapses mid-talk. It approves three model cards: `upstream.eastwind.example/eastwind-stand-in`, `127.0.0.1/eastwind-local` (the in-process gateway beats), and `openai/gpt-4o-mini` (the model the 0.4 beats name on their egress calls). Owners and the control function are workshop fiction.
 
 Further regimes engage only for the tool that demonstrates them, so the original ALLOW and DENY envelopes still resolve the same way. `CLASSIFIER_GATE` covers free-text questions. `HANDLING` covers a typed classification. `CLIENT_LETTER` holds a letter for one human. `RELEASE_NOTE` holds a structured-note release for two signatures. `TOOL_BAR` refuses an autocall offer. `MONEY_MARKET_WINDOW` is the effective-dated domicile list. Citations stay the workshop fiction already on the pack.
 
 ## Showcase
 
-`eastwind showcase <name>` prints one beat. `eastwind showcase all` runs them in this order. Each beat writes `.eastwind/showcase/<name>.db` and replaces what an earlier run left. Every beat runs offline with no API key; the whole tour takes under ten seconds.
+`eastwind showcase <name>` prints one beat. `eastwind showcase all` runs them in this order. Each beat writes `.eastwind/showcase/<name>.db` and replaces what an earlier run left. Every beat runs offline with no API key. Gateway and MCP traffic uses local stand-ins; timings depend on the host and installed extras.
 
 | Command | What the room should see |
 |---|---|
-| `eastwind showcase authorise` | Outcome order `DENY > ESCALATE > HUMAN_APPROVAL > ALLOW`. The AE structured-note request is `DENY` with `HK_SFC` and `DIFC_DFSA` citations and a single `POLICY_DECISION`. Retrieval is not called. The SG money-market request is `ALLOW`, retrieval runs, and the `C3` note and the unzoned draft stay out. An empty purpose list is `DENY`. `unregistered-rogue-agent` is `DENY`. The kill switch on `eligibility-advisor` is `DENY` and names the Head of Conduct, Eastwind Private. |
+| `eastwind showcase authorise` | Outcome order `DENY > ESCALATE > HUMAN_APPROVAL > ALLOW`. The AE structured-note request is `DENY` with `HK_SFC` and `DIFC_DFSA` citations and a single `POLICY_DECISION`. Retrieval is not called. The SG money-market request is `ALLOW`, retrieval runs, and the `C3` note and the unzoned draft stay out. An absent purpose is `DENY` against the register. `unregistered-rogue-agent` is `DENY`. The kill switch on `eligibility-advisor` is `DENY` and names the Head of Conduct, Eastwind Private. |
 | `eastwind showcase egress` | `EgressGuard` on Mei Tan’s email, account, and name. `C1` to a remote destination is `ALLOW`. `C2` remote is `REDACT`: the provider side sees the tokens, the caller gets the identifiers back. `C2` to a local destination is `ALLOW` and the callable sees the email. `C3` remote raises before the callable. |
-| `eastwind showcase classify` | `ask()` on a vague eligibility question is `ESCALATE` below the confidence floor, with no retrieval. A clear email classifies `C2` and is `ALLOW`. Prompt text that names `C0`, a purpose, or a principal does not widen that decision. A claimed-public sentence stays on the classifier floor. `run_governed()` executes the clear tool and withholds the vague one. A typed `C0` attribute is used as given and the classifier is not consulted. |
+| `eastwind showcase classify` | `ask()` on a vague eligibility question is `ESCALATE` below the confidence floor, with no retrieval. A clear email classifies `C2` and is `ALLOW`. Prompt text that names `C0`, a purpose, or a principal does not widen that decision. A claimed-public sentence stays on the classifier floor. `run_governed()` executes the clear tool and withholds the vague one. A typed `C0` is a floor: the classifier still runs, raises sensitive text to `C2`, and the public-only handling rule denies it. Argument keys and nested values are included in classifier input hashes. |
 | `eastwind showcase budget` | A `Run` with `max_calls=1` allows the first tool call and `DENY`s the second, citing `max_calls`. A run already past `wall_clock_seconds`, a `C2` tool under a `C1` `classification_ceiling`, and a call priced above `max_cost_usd` are each `DENY` citing that cap. The tool body ran once. |
 | `eastwind showcase approval` | `draft_client_letter` returns `HUMAN_APPROVAL`, writes a checkpoint, and does not call the tool. `continue_run()` without a grant does not execute. A granted approval resumes and the tool runs. `release_structured_note` needs two signatures: one mark leaves it unconfirmed and unexecuted; `confirm()` by the Head of Conduct, Eastwind Private, then `continue_run()`, runs it. |
 | `eastwind showcase replay` | The ALLOW decision replays `ALLOW`. Erasing the response body keeps that replay. `supersede_policy()` on the money-market window leaves the pinned decision matching. `kognita evidence reconstruct` writes `replay-report.json` and `replay-report.txt`. A tampered knowledge row and a tampered retained prompt fail replay. An in-place citation edit is refused; the same citation written into the row fails replay. |
@@ -144,17 +153,35 @@ Further regimes engage only for the tool that demonstrates them, so the original
 | `eastwind showcase packs` | **0.4.** `kognita packs list` shows the hyphenated built-in packs, `show private-banking` its rules, and `load two-signature-approval-chains` compiles one into the store. `update_pack` with a tampered file is refused and keeps the installed pack; with the pin matching it installs. Both leave `POLICY_CHANGE` evidence. The transport serves the wheel's own files, so this runs offline. |
 | `eastwind showcase recorder` | **0.4.** `kognita recorder runs`, `show` (the denied run's failing checks and citations), `export` and `alerts` (repeated denials fires). OpenTelemetry attaches only with `kognita[otel]` and `OTEL_EXPORTER_OTLP_ENDPOINT`; otherwise it is refused and says why. |
 | `eastwind showcase adapters` | **0.4, optional extras.** Reports which of `kognita[hermes-agent]`, `[openai-agents]`, `[langgraph]` and `[pydantic-ai]` are installed and skips the rest. The binding every adapter shares wraps an Eastwind tool: CL-1001 is `ALLOW`, CL-2002 raises with the MAS citation and the body is not called. The Hermes `pre_tool_call` hook returns `block`. |
+| `eastwind showcase autonomy` | **0.5.1.** Reviewed L0 reads allow; L1 analysis denies (`S1-IDENTITY`, `S1-DEPLOYMENT`, `S1-LEVEL`). Promotion without validated metric gates is refused (`S1-PROMOTION`). |
+| `eastwind showcase credentials` | **0.5.1.** A live workload secret exercises its human delegation; a child task reserves parent capacity (`S3-DELEGATION`, `S6B-DELEGATION`, `S6B-RUN-ISOLATION`). Missing or revoked secrets deny (`S2-CREDENTIAL`). |
+| `eastwind showcase authority` | **0.5.1.** Human grants support an attenuated task (`S3-HUMAN-ENTITLEMENT`, `S3-DELEGATION`). Widening to execute is refused (`S3-ATTENUATION`); revoking delegation stops the next call. |
+| `eastwind showcase blastradius` | **0.5.1.** One read consumes the daily action allowance; another run cannot bypass it (`S4-DAILY-ACTIONS`). An unlisted product denies (`S4-PRODUCTS`). `max_daily_transactions=0` independently bars execute (`S4-DAILY-TRANSACTIONS`); this L0 agent also lacks execution authority. |
+| `eastwind showcase anomaly` | **0.5.1.** A valid read allows. Three unlisted-tool probes trigger containment (`S6-PRIVILEGE-PROBING`), engage the kill switch, revoke credentials and record the owner alert. Later calls deny (`KILL_SWITCH`, `S6-QUARANTINE`, `S2-CREDENTIAL`). |
+| `eastwind showcase taint` | **0.5.1.** A client-data read taints the run (`S5-TAINT`). Public content is denied even after removing client references or rotating the run (`S5-PUBLIC-CONTENT`, `S6B-RUN-ISOLATION`). |
+| `eastwind showcase triggers` | **0.5.1.** A configured trigger is forwarded and evidenced as `SYSTEM`; an unlisted trigger is denied (`S2-SYSTEM-TRIGGER`). |
+| `eastwind showcase providerkey` | **0.5.1.** A real serve process supplies its configured provider key to the local stand-in on the four inference paths. Caller credentials deny without forwarding or retaining their values (`S2-PROVIDER-KEY`). An unsupported endpoint and opaque attachment deny (`S5-MODEL-ENDPOINT`, `S5-UNSUPPORTED-CONTENT`); response fields are minimized (`S4-FIELDS`). |
+| `eastwind showcase proposal` | **0.5.1.** `propose_document` leaves the target unchanged. Pending approval refuses apply (`PROPOSAL-APPROVAL`); a distinct human approves the exact diff and `apply_proposal_tool` applies it once (`PROPOSAL-HUMAN`, `PROPOSAL-BINDING`). Repeated apply denies. |
+| `eastwind showcase recovery` | **0.5.1.** Three governed reversible local operations allow. `recover_run` compensates latest first; a failed compensation keeps the run paused and new work denied (`PAUSE`, `S6C-RECOVER`). Retry completes only the unfinished compensation and marks recovery complete. |
 
-The gateway beat needs the name `upstream.eastwind.example` to resolve to `127.0.0.1`, so the stand-in looks remote while the bytes stay on this machine. The scenario appends that hosts line when it can. The serve process is started with the agent and the purpose only, against a store holding the agent and the register: loading every regime with no actor location would deny the call. kognita 0.4 no longer trusts localhost by default, so the egress beat passes `EgressPolicy(trust_local=True)` for its local destination. The in-process store-down beats pass `EastwindPack` with an empty actor location so those regimes stay unengaged. A live OpenAI completion remains `eastwind run allow` when `OPENAI_API_KEY` is set.
+
+The gateway beat uses `upstream.eastwind.example` resolving to `127.0.0.1`, so the origin looks remote while the bytes stay on this machine. It appends that hosts line when permitted. The serve store contains the approved agent and use-case register; domain policy rows belong to the pack-aware library and MCP scenarios. The SDK suppresses its default Authorization header with `Omit()`, supplies a workload credential and delegation, and binds sensitive calls to a persisted run. The stand-in returns an extra provider field that the gateway withholds through the purpose field allow-list.
+
+For 0.5.1, agents declare deployment date, model, principal, reviewed deployment behavior, permitted systems and tools. The host issues workload credentials and human grants, then attenuates them into task delegations. Secrets stay out of evidence and checkpoints. Pure decisions and replay receive the effective use-case register; historical and conformance scenarios seed it at their observation time. Rejected and approved examples use distinct request arguments because approvals are exact and single-use. Framework bindings carry the same credentials and delegation IDs.
+
+The existing tool callbacks read or generate results; they do not send client messages or execute transactions. The proposal scenario separately applies a reviewed document change. MCP HTTP tools declared `draft`, `queue`, `send` or `execute` must declare `reversible: true` and a named compensation tool; closing the HTTP socket does not confirm backend cancellation. Tier 2+ execution belongs at gateway/MCP ingress (`S2-DEPLOYMENT-MODE`); the library examples use the registered tier 1 use case. Typed classification is a floor, and opaque file, image and audio attachments are refused before forwarding.
+
+The `providerkey` scenario runs `kognita serve` with `KOGNITA_PROVIDER_KEY`; `--provider-key` is the equivalent gateway configuration. Caller `authorization`, `x-api-key`, `api-key` and `x-goog-api-key` provider credentials are refused under `S2-PROVIDER-KEY`. Supported inference paths are exactly `/v1/chat/completions`, `/v1/completions`, `/v1/responses` and `/v1/embeddings`. Responses expose only explicitly allowed fields. The egress scenario opts into `EgressPolicy(trust_local=True)` for its trusted local example. The optional direct tier 1 OpenAI callable remains `eastwind run allow` when `OPENAI_API_KEY` is set.
+
 
 ## Tests
 
-Offline tests cover `decide`, the dual-regime denial, the missing retrieval and model call, redaction with a fake completer, chain verification, tamper detection, the CLI, and every showcase scenario, including each 0.4 beat run twice in a row. The conformance kit’s human-approval case is bound to `draft_client_letter`, so that case runs here. The original ALLOW and DENY outcomes are unchanged. An empty purpose list fails closed inside `eastwind showcase authorise`.
+Offline tests cover `decide`, the dual-regime denial, the missing retrieval and model call, redaction with a fake completer, chain verification, tamper detection, the CLI, and every showcase scenario, including each 0.4 and 0.5 beat run twice in a row, field projection, attachment and endpoint refusal, credential secrecy, and classifier input hashes. The conformance kit’s human-approval case is bound to `draft_client_letter`, so that case runs here. The original ALLOW and DENY outcomes are unchanged. An absent purpose fails closed inside `eastwind showcase authorise`.
 
 ```bash
-pytest                 # live test skips without OPENAI_API_KEY
-pytest -m "not openai" # offline suite, including every showcase
-pytest -m openai       # one real chat completion; needs the key
+uv run --no-sync pytest                 # live test skips without OPENAI_API_KEY
+uv run --no-sync pytest -m "not openai" -q
+uv run --no-sync pytest -m openai        # one real chat completion; needs the key
 ```
 
 ## Layout
@@ -164,6 +191,7 @@ src/eastwind/pack.py           fictional clients, rules, knowledge
 src/eastwind/run.py            envelope → decide → retrieve → egress
 src/eastwind/showcase.py       one scenario per kognita 0.3 feature, and the tour order
 src/eastwind/showcase04.py     one scenario per kognita 0.4 feature
+src/eastwind/showcase05.py     ten kognita 0.5.1 scenarios
 src/eastwind/local_servers.py  local OpenAI and MCP stand-ins
 src/eastwind/openai_chat.py    chat completions callable used by the guard
 src/eastwind/cli.py            eastwind run | showcase | verify | export | doctor
