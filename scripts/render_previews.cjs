@@ -46,11 +46,12 @@ function serve() {
   const server = await serve();
   const base = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  // Under 980px wide the caption panel is hidden and the scene is centred, which suits a still.
+  // A window this small gets the compact layout. The chrome is hidden below and the scene is centred, which suits
+  // a still, but the compact layout also lists the labels as text instead of floating them, so they are put back.
   const page = await browser.newPage({ viewport: { width: 960, height: 540 }, deviceScaleFactor: 2 });
   await page.goto(`${base}/story/index.html`);
   await page.waitForFunction(() => window.eastwindStory, null, { timeout: 30000 });
-  await page.addStyleTag({ content: '.top,.foot,.choices,.drawer,.panel,.counters,#flash,.nogl,.loading{display:none!important}' });
+  await page.addStyleTag({ content: '.top,.foot,.choices,.drawer,.panel,.counters,#flash,.nogl,.loading{display:none!important} body[data-compact] #labels{display:block!important}' });
   const only = process.argv.slice(2);   // optional shot names: node scripts/render_previews.cjs prove
   for (const [name, step, choice, seconds, cam] of SHOTS.filter(([n]) => !only.length || only.includes(n))) {
     await page.evaluate((s) => window.eastwindStory.go(window.eastwindStory.steps.indexOf(s)), step);
