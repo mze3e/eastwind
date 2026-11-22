@@ -22,7 +22,7 @@ jobs:
           uv run --no-sync eastwind workflow all --db "$RUNNER_TEMP/workflows"
           uv run --no-sync eastwind pwm export -o "$RUNNER_TEMP/pwm.ttl"
           uv run --no-sync eastwind pwm validate "$RUNNER_TEMP/pwm.ttl"
-      - name: Build the site (talk page and 3D walkthrough)
+      - name: Build the site (demo page and 3D walkthrough)
         run: uv run --no-sync python scripts/build_demo_page.py --output "$RUNNER_TEMP/site/index.html"
       - uses: actions/setup-node@v4
         with:

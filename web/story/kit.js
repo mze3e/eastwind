@@ -108,7 +108,7 @@ export function panel(width, height, draw, { ppu = 200, opacity = 1, depthTest =
   c.width = Math.round(width * ppu); c.height = Math.round(height * ppu);
   const g = c.getContext('2d');
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  // Printed colours must stay true: tone mapping would turn white paper grey.
+  // Printed colors must stay true: tone mapping would turn white paper grey.
   const material = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, depthTest, side: THREE.DoubleSide, toneMapped: false });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
   mesh.userData.redraw = (fn = draw) => { g.clearRect(0, 0, c.width, c.height); fn(g, c.width, c.height); tex.needsUpdate = true; };
@@ -166,7 +166,7 @@ export function robot({ accent = C.cyan } = {}) {
   return g;
 }
 
-/** A faceless mannequin: role is shown by colour and prop, never by features. */
+/** A faceless mannequin: role is shown by color and prop, never by features. */
 export function person({ suit = 0x3b6aa0, accent = C.gold, prop = 'lanyard' } = {}) {
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.95, 8, 18), mat(suit, { roughness: 0.6 })); body.position.y = 1.05;

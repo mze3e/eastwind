@@ -75,7 +75,7 @@ async function boot() {
     $('dots').append(el('li', {}, b)); return b;
   });
 
-  $('honest').textContent = `Workshop fiction. Synthetic data. The AI model is an offline stand-in; the decisions you see are real Kognita ${story.meta.kognita} results, replayed from a run built ${story.meta.built_at}.`;
+  $('honest').textContent = `Fiction. Synthetic data. The AI model is an offline stand-in; the decisions you see are real Kognita ${story.meta.kognita} results, replayed from a run built ${story.meta.built_at}.`;
 
   // ----------------------------------------------------------- state
   let current = -1, scope = null, choiceScope = null, picked = null;
