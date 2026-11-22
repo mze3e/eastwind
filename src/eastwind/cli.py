@@ -165,7 +165,11 @@ def _completer_for(call_model: bool) -> tuple[OpenAIChat | None, bool]:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    if args.llm and args.llm != "mock":
+    from eastwind.llm import Settings
+
+    llm = Settings.from_env(args.llm)
+    if llm.provider != "mock":
+        llm.validate()
         raise ValueError("This legacy scenario does not support gateway identity binding; use the offline mock")
     db = _db_path(args.db)
     if args.fresh:
