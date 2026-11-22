@@ -112,6 +112,7 @@ def test_rewrite_config_and_independent_cold_starts(monkeypatch):
         config = json.loads((Path(__file__).resolve().parents[1] / 'vercel.json').read_text())
         assert config['env']['EASTWIND_PUBLIC_DEMO'] == '1'
         assert any(item['source'] == '/admin/:path*' for item in config['rewrites'])
+        assert any(item['source'] == '/admin/' for item in config['rewrites'])
         strict = next(item for item in config['headers'] if item['source'] == '/')
         assert "form-action 'none'" in strict['headers'][0]['value']
     finally:
