@@ -1,4 +1,4 @@
-"""Workshop tour of the kognita surface, on the Eastwind Private pack.
+"""Tour of the kognita surface, on the Eastwind Private pack.
 
 Each function is one ``eastwind showcase`` scenario. The 0.4 scenarios
 (register through adapters) live in :mod:`eastwind.showcase04`. They call the real

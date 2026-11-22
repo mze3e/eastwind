@@ -1,6 +1,6 @@
 # Eastwind Private
 
-Eastwind is a synthetic wealth-management workshop built on `kognita==0.9.0`. It demonstrates policy checks before retrieval, governed agent tools, human approval, and tamper-evident records. Clients, data, policies, and trade proposals are fictional. No workflow places a trade.
+Eastwind Private is a governed-agents demo on `kognita==0.9.0`. It demonstrates policy checks before retrieval, governed agent tools, human approval, and tamper-evident records. Clients, data, policies, and trade proposals are fictional. No workflow places a trade.
 
 ## Offline quickstart
 
@@ -18,7 +18,7 @@ For the longer command-line showcase, run `uv run eastwind showcase all --db /tm
 
 ## Vercel public demo
 
-The Git-connected Vercel configuration builds the static talk page at `/` and routes `/admin/` to `api/index.py`, a Python 3.12 FastAPI function. The configuration sets `EASTWIND_PUBLIC_DEMO=1`; no provider key or admin token is needed. The function always uses the in-process mock and rejects real-provider requests. It does not start `kognita serve` or contact an external service. The MCP and degraded gateway drills need the local CLI and are disabled in the public UI.
+The Git-connected Vercel configuration builds the static demo page at `/` and routes `/admin/` to `api/index.py`, a Python 3.12 FastAPI function. The configuration sets `EASTWIND_PUBLIC_DEMO=1`; no provider key or admin token is needed. The function always uses the in-process mock and rejects real-provider requests. It does not start `kognita serve` or contact an external service. The MCP and degraded gateway drills need the local CLI and are disabled in the public UI.
 
 Each function instance seeds synthetic records under `/tmp`. State is shared by visitors on that instance, can disappear on restart, and is not synchronized across instances. A later request may reach a different instance, so an approval can disappear between requests. Never enter real client data. The public evidence page verifies the Python chain and shows the npm command for local verification; it does not run npm in the function. The normal `eastwind admin` command remains token-protected and local-only.
 

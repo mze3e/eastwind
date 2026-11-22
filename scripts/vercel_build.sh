@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Eastwind (Python >= 3.12, uv.lock) and build the static talk page.
+# Install Eastwind (Python >= 3.12, uv.lock) and build the static demo page.
 # The page builder clears OPENAI_API_KEY and uses the offline echo model only.
 set -euo pipefail
 
@@ -14,7 +14,7 @@ fi
 
 if command -v uv >/dev/null 2>&1; then
   # The CLI imports the showcase, and that imports kognita.testing, which
-  # imports pytest. The dev extra is the install the projector runbook uses.
+  # imports pytest. The dev extra is the install the page builder uses.
   uv sync --frozen --extra dev
   uv run --no-sync python scripts/build_demo_page.py
 else
