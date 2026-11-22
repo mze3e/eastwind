@@ -33,9 +33,9 @@ export function buildProve(ctx) {
 
   const blocks = [];
   win.forEach((e, i) => {
-    const colour = GROUP_COLOR[e.group] || C.grey;
+    const color = GROUP_COLOR[e.group] || C.grey;
     const holder = new THREE.Group(); holder.position.set(xAt(i), ROW_Y, 0); group.add(holder);
-    const body = slab(0.7, 1.05, 0.34, 0.08, mat(colour, { roughness: 0.35, emissive: colour, emissiveIntensity: 0.28 })); holder.add(body);
+    const body = slab(0.7, 1.05, 0.34, 0.08, mat(color, { roughness: 0.35, emissive: color, emissiveIntensity: 0.28 })); holder.add(body);
     const num = panel(0.7, 0.34, (g, W, H) => { g.clearRect(0, 0, W, H); g.fillStyle = '#0b1626'; g.textAlign = 'center'; g.textBaseline = 'middle'; fit(g, String(e.seq), W / 2, H * 0.52, W * 0.86, H * 0.62, 800); }, { ppu: 170 });
     num.position.set(0, 0.1, 0.2); holder.add(num);
     const lampMat = emissive(0x586b82, 0.6);
@@ -43,7 +43,7 @@ export function buildProve(ctx) {
     const bond = i === 0 ? null : new THREE.Mesh(new THREE.BoxGeometry(PITCH - 0.7, 0.07, 0.07), basic(C.cyan, 0.55));
     if (bond) { bond.position.set(-PITCH / 2, 0, 0); holder.add(bond); }
     holder.scale.setScalar(0.001);
-    blocks.push({ holder, body, lamp, lampMat, bond, e, colour });
+    blocks.push({ holder, body, lamp, lampMat, bond, e, color });
   });
 
   // entries from before the window: a dim stack on the left, as a count and not as detail
@@ -87,7 +87,7 @@ export function buildProve(ctx) {
     for (const b of blocks) {
       b.holder.scale.setScalar(shown ? 1 : 0.001); b.holder.rotation.set(0, 0, 0);
       b.lampMat.color.set(0x586b82); b.lampMat.emissive.set(0x586b82); b.lampMat.emissiveIntensity = 0.6;
-      b.body.material.color.set(b.colour); b.body.material.emissive.set(b.colour); b.body.material.emissiveIntensity = 0.28;
+      b.body.material.color.set(b.color); b.body.material.emissive.set(b.color); b.body.material.emissiveIntensity = 0.28;
       if (b.bond) b.bond.material.color.set(C.cyan);
     }
     scan.visible = false; reportSheet.visible = false; reportState.shown = 0; redrawReport();

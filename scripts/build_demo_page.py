@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build the public Eastwind site: the talk page and the 3D walkthrough.
+"""Build the public Eastwind site: the demo page and the 3D walkthrough.
 
-The talk page shows the stdout of these commands, in order, on one fresh store:
+The demo page shows the stdout of these commands, in order, on one fresh store:
 
     eastwind run deny --fresh
     eastwind run allow --echo-model
@@ -74,7 +74,7 @@ class DemoTranscripts:
 
 
 def _refuse_live_model(self: OpenAIChat, redacted: str) -> str:
-    raise RuntimeError("the talk page refused a live model call")
+    raise RuntimeError("the demo page refused a live model call")
 
 
 def _run(argv: list[str], cwd: Path) -> str:
@@ -139,7 +139,7 @@ def _require(transcript: str, needle: str, label: str) -> None:
 
 
 def capture_demo() -> DemoTranscripts:
-    """Run the three projector commands on a temporary store."""
+    """Run the three offline demo commands on a temporary store."""
     saved_key = os.environ.get("OPENAI_API_KEY")
     saved_provider = os.environ.get("EASTWIND_LLM_PROVIDER")
     os.environ["OPENAI_API_KEY"] = ""
@@ -311,7 +311,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Governed Agents That Survive Audit - Eastwind Private</title>
-  <meta name="description" content="A guided 3D walkthrough of an AI assistant at a fictional private bank: what it may see, what it may do, and the proof it leaves behind. Workshop fiction for Ahmed Muzammil's AgentCon Singapore talk.">
+  <meta name="description" content="A guided 3D walkthrough of an AI assistant at a fictional private bank: what it may see, what it may do, and the proof it leaves behind. Eastwind Private: a governed-agents demo on kognita.">
   <style>
     :root {{
       color-scheme: dark;
@@ -393,15 +393,15 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
 </head>
 <body>
   <div class="banner">
-    <strong>Workshop fiction.</strong>
+    <strong>Fiction.</strong>
     Eastwind Private is a fictional institution. The clients, products, and citations on this page are not real and are not legal advice.
   </div>
   <div class="wrap">
     <header class="hero">
       <div>
-        <p class="eyebrow">AgentCon Singapore · 5 November 2026</p>
+        <p class="eyebrow">Eastwind Private: a governed-agents demo on kognita</p>
         <h1>An AI colleague that can show its work</h1>
-        <p class="meta">Talk: Governed Agents That Survive Audit · Ahmed Muzammil · Eastwind Private</p>
+        <p class="meta">Governed Agents That Survive Audit · Ahmed Muzammil · Eastwind Private</p>
         <p class="lede">Watch one AI assistant do real work at a private bank, and see how it is kept safe: what it may see, what it may do, and the proof it leaves behind.</p>
         <div class="cta">
           <a class="btn primary" href="/story/">Start the walkthrough &rarr;</a>
@@ -419,7 +419,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
     <section class="honest" aria-label="How to read this">
       <strong>What is real here.</strong>
       <ul>
-        <li>The bank, its clients and every citation are invented for the talk. The data is synthetic.</li>
+        <li>The bank, its clients and every citation are invented for this demo. The data is synthetic.</li>
         <li>The AI model is an offline stand-in. No provider is contacted and no key is used.</li>
         <li>The decisions are real Kognita results. The walkthrough replays a run made when this page was built, so it does not depend on a live system in the room.</li>
       </ul>
@@ -478,7 +478,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
     </details>
 
     <footer>
-      <p><strong>Workshop fiction.</strong> Eastwind Private, its clients, and every citation above are invented for this talk.</p>
+      <p><strong>Fiction.</strong> Eastwind Private, its clients, and every citation above are invented for this demo.</p>
       <p>Built { _esc(stamp) } from eastwind { _esc(eastwind_version) } and kognita { _esc(kognita_version) }, by running the three commands above on a temporary store. The published site is this static page and the 3D walkthrough it links to.</p>
     </footer>
   </div>
@@ -543,12 +543,12 @@ def render_onepager(facts: dict, *, built_at: datetime) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>One page: an AI colleague that can show its work - Eastwind Private</title>
-<meta name="description" content="A one-page summary of the Eastwind Private walkthrough, with the figures from the run it replays. Workshop fiction, synthetic data.">
+<meta name="description" content="A one-page summary of the Eastwind Private walkthrough, with the figures from the run it replays. Fiction, synthetic data.">
 <style>{ONEPAGER_CSS}</style>
 </head>
 <body>
 <article class="sheet">
-  <p class="tag"><b>Eastwind Private</b> · workshop fiction · synthetic data</p>
+  <p class="tag"><b>Eastwind Private</b> · fiction · synthetic data</p>
   <h1>An AI colleague that can show its work</h1>
   <p class="lede">One AI assistant at a private bank, and how it is kept safe: what it may see, what it may do, and the proof it leaves behind.</p>
   <ul class="numbers" aria-label="The run in four numbers">{numbers}</ul>
@@ -577,8 +577,8 @@ def build_page(output: Path) -> str:
     """Build the landing page only. This is what the offline tests check."""
     demo = capture_demo()
     page = render_html(demo, built_at=datetime.now(timezone.utc))
-    if "Workshop fiction." not in page or "Eastwind Private is a fictional institution." not in page:
-        raise RuntimeError("the page is missing the workshop-fiction label")
+    if "Fiction." not in page or "Eastwind Private is a fictional institution." not in page:
+        raise RuntimeError("the page is missing the fiction label")
     secret = os.environ.get("OPENAI_API_KEY", "")
     if secret and secret in page:
         raise RuntimeError("the page contains OPENAI_API_KEY")
@@ -658,7 +658,7 @@ def serve(root: Path, port: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the Eastwind site: the talk page and the 3D walkthrough.")
+    parser = argparse.ArgumentParser(description="Build the Eastwind site: the demo page and the 3D walkthrough.")
     parser.add_argument(
         "--output",
         type=Path,

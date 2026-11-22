@@ -102,8 +102,8 @@ async function boot() {
 
   // The short line is always on screen; on a phone the rest sits in the mechanics drawer instead.
   const whatIsReal = `The AI model is an offline stand-in; the decisions you see are real Kognita ${story.meta.kognita} results, replayed from a run built ${story.meta.built_at}.`;
-  $('honest').replaceChildren('Workshop fiction. Synthetic data. ', el('span', { className: 'more', textContent: whatIsReal }));
-  $('mech-real').textContent = `What is real here. Workshop fiction and synthetic data. ${whatIsReal}`;
+  $('honest').replaceChildren('Fiction. Synthetic data. ', el('span', { className: 'more', textContent: whatIsReal }));
+  $('mech-real').textContent = `What is real here. Fiction and synthetic data. ${whatIsReal}`;
 
   // ----------------------------------------------------------- layout
   // Windows of at least 1280 by 720 put the caption beside the picture. Short, wide ones (a laptop with a small

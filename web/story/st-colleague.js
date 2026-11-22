@@ -50,11 +50,11 @@ export function buildColleague(ctx) {
   place(rings[1], 2.5, 0.3); place(rings[2], 4.2, 0.15);
   for (const n of pwm.nodes) {
     const size = 0.26 + Math.min(0.2, Math.log2(n.count + 1) * 0.05) + (n.ring === 0 ? 0.25 : 0);
-    const colour = n.ring === 0 ? C.gold : n.ring === 1 ? C.cyan : C.blue;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 24, 18), emissive(colour, 1.1));
-    const halo = glowSprite(colour, size * 5, 0.5); mesh.add(halo);
+    const color = n.ring === 0 ? C.gold : n.ring === 1 ? C.cyan : C.blue;
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 24, 18), emissive(color, 1.1));
+    const halo = glowSprite(color, size * 5, 0.5); mesh.add(halo);
     mesh.position.copy(n.pos); mesh.scale.setScalar(0.001); graph.add(mesh);
-    const edge = n.ring === 0 ? null : link(hubPos.toArray(), n.pos.toArray(), colour, 0.35);
+    const edge = n.ring === 0 ? null : link(hubPos.toArray(), n.pos.toArray(), color, 0.35);
     if (edge) { edge.visible = false; graph.add(edge); }
     nodes.push({ n, mesh, edge });
   }

@@ -1,6 +1,6 @@
 """The walkthrough on small screens and for people who do not use a mouse.
 
-Colour contrast is worked out from the stylesheet itself, so a palette change that makes text hard to
+Color contrast is worked out from the stylesheet itself, so a palette change that makes text hard to
 read fails here. The page's accessibility hooks are checked as text. The real layout checks (nothing
 overlaps, nothing is cut off, focus is visible at phone, tablet and laptop sizes) need a browser, so they
 live in scripts/check_story.cjs; the last test runs a short pass of it when `EASTWIND_BROWSER_CHECK=1`.
@@ -23,7 +23,7 @@ def read(name: str) -> str:
     return (STORY / name).read_text(encoding="utf-8")
 
 
-# ---------------------------------------------------------------- colour contrast
+# ---------------------------------------------------------------- color contrast
 
 def _rgb(value: str) -> tuple[int, int, int]:
     value = value.lstrip("#")
@@ -32,11 +32,11 @@ def _rgb(value: str) -> tuple[int, int, int]:
     return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
 
 
-def _luminance(colour: tuple[int, int, int]) -> float:
+def _luminance(color: tuple[int, int, int]) -> float:
     def channel(c: int) -> float:
         c = c / 255
         return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
-    r, g, b = (channel(c) for c in colour)
+    r, g, b = (channel(c) for c in color)
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
@@ -63,13 +63,13 @@ def test_light_text_on_the_dark_surfaces_meets_wcag_aa():
     tokens = _tokens()
     css = read("story.css")
     light = {f"--{name}" for name in ("ink", "muted", "gold", "good", "bad", "amber", "cyan", "blue")}
-    colours = {name: tokens[name.removeprefix("--")] for name in light}
-    # Literal text colours in the stylesheet: anything light is text on a dark surface.
+    colors = {name: tokens[name.removeprefix("--")] for name in light}
+    # Literal text colors in the stylesheet: anything light is text on a dark surface.
     for hex_value in set(re.findall(r"(?<![-\w])color:\s*(#[0-9a-fA-F]{6})\b", css)):
         if _luminance(_rgb(hex_value)) > 0.35:
-            colours[hex_value] = hex_value
+            colors[hex_value] = hex_value
     failures = [(name, surface, round(contrast(value, surface), 2))
-                for name, value in colours.items() for surface in SURFACES if contrast(value, surface) < 4.5]
+                for name, value in colors.items() for surface in SURFACES if contrast(value, surface) < 4.5]
     assert not failures, failures
 
 
@@ -84,8 +84,8 @@ def test_the_dark_text_on_a_filled_button_is_the_navy_of_the_page():
     css = read("story.css")
     navy = _tokens()["navy"]
     for rule in re.findall(r"[^{}]*(?:\.picked|\[aria-pressed=\"true\"\]|\.primary|\[aria-current=\"step\"\])[^{}]*\{[^}]*\}", css):
-        for colour in re.findall(r"(?<![-\w])color:\s*(#[0-9a-fA-F]{6})", rule):
-            assert colour.lower() == navy.lower(), rule.strip()
+        for color in re.findall(r"(?<![-\w])color:\s*(#[0-9a-fA-F]{6})", rule):
+            assert color.lower() == navy.lower(), rule.strip()
 
 
 # ------------------------------------------------------------ the page's hooks

@@ -197,7 +197,7 @@ def capture_story(root: Path | None = None) -> dict[str, Any]:
     db = root / "story.db"
     engine = make_engine(db)
     try:
-        # The two projector scenarios, then the wealth workflows, all on one store so
+        # The two offline demo scenarios, then the wealth workflows, all on one store so
         # the evidence chain below is the receipt for the whole walkthrough.
         borders = {name: _scenario_view(engine, name) for name in ("deny", "allow")}
     finally:
@@ -277,7 +277,7 @@ def capture_story(root: Path | None = None) -> dict[str, Any]:
              "the confidential file must be blocked from leaving")
     _require(suit["INS-MMF"]["suitable"] and not suit["INS-HK-NOTE"]["suitable"], "mandate check changed")
     _require(rb["held"] and rb["checkpoint"] and rb["approved_executed"] and not rb["denied_executed"]
-             and rb["approved_before_stop"] and not rb["stopped_executed"], "approval and stop behaviour changed")
+             and rb["approved_before_stop"] and not rb["stopped_executed"], "approval and stop behavior changed")
     _require(stopped["steps"][0]["outcome"] == "DENY" and stopped["facts"]["retrieved"] == [],
              "the emergency stop must deny the next request")
     _require([s["outcome"] for s in spend["steps"]] == ["ALLOW", "DENY"], "the budget must run out on call three")
@@ -663,7 +663,7 @@ def build_story(data: dict[str, Any]) -> dict[str, Any]:
         "point": "You have seen a handful of controls. This is the whole map: what you saw, where else to see it, "
                  "and what is part of Kognita but not demonstrated here.",
         "say": "Be straight about the edges. The first group you have just watched. The next shows where each of "
-               "the others can be seen. The last are real parts of Kognita that this workshop does not demonstrate.",
+               "the others can be seen. The last are real parts of Kognita that this demo does not demonstrate.",
         "groups": [[gid, label] for gid, label in CAPABILITY_GROUPS.items()],
         "capabilities": _capabilities(ids),
         "mechanics": {"command": "uv run eastwind showcase all --db /tmp/eastwind-showcase",

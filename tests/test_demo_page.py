@@ -1,4 +1,4 @@
-"""The public talk page is the offline projector run. No network."""
+"""The public demo page is the offline command run. No network."""
 
 from __future__ import annotations
 
@@ -23,18 +23,22 @@ def _builder():
     return module
 
 
-def test_talk_page_is_the_offline_projector_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-talk-page-must-not-leak")
+def test_demo_page_is_the_offline_command_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-demo-page-must-not-leak")
     monkeypatch.setenv("EASTWIND_LLM_PROVIDER", "openai")
     page = _builder().build_page(tmp_path / "index.html")
     text = (tmp_path / "index.html").read_text(encoding="utf-8")
     assert text == page
 
-    assert "Workshop fiction." in text
+    assert "Fiction." in text
     assert "Eastwind Private is a fictional institution." in text
     assert "Governed Agents That Survive Audit" in text
-    assert "5 November 2026" in text
+    assert "Eastwind Private: a governed-agents demo on kognita" in text
     assert "Ahmed Muzammil" in text
+    retired_event = "agent" + "con"
+    assert retired_event not in text.lower()
+    assert "agent" + "-con" not in text.lower()
+    assert "5 November 2026" not in text
     assert 'href="/admin/"' in text
     assert os.environ['EASTWIND_LLM_PROVIDER'] == 'openai'
 
@@ -67,7 +71,7 @@ def test_talk_page_is_the_offline_projector_run(tmp_path: Path, monkeypatch: pyt
 
     assert "eastwind verify" in text
     assert "evidence chain verified:" in text
-    assert "sk-talk-page-must-not-leak" not in text
+    assert "sk-demo-page-must-not-leak" not in text
     assert "<script" not in text.lower()
 
 
@@ -82,3 +86,16 @@ def test_vercel_config_publishes_the_static_page():
     builder = (ROOT / "scripts" / "build_demo_page.py").read_text(encoding="utf-8")
     assert '"--echo-model"' in builder
     assert "OpenAIChat" in builder
+
+
+def test_tracked_files_do_not_mention_the_retired_event_name():
+    import subprocess
+
+    needle = "agent" + "con"
+    result = subprocess.run(
+        ["git", "grep", "-i", "-E", needle + "|" + "agent" + "-con"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1, result.stdout or result.stderr

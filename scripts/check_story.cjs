@@ -15,7 +15,7 @@
 //     pile on top of one another;
 //   - no text is clipped inside its box, and every button and link is at least 24 by 24 pixels (WCAG 2.5.8);
 //   - every button has a name a screen reader can say, and the step is announced.
-// It also opens the talk page and the one-pager at each size: no sideways scroll, every picture loaded, no small
+// It also opens the demo page and the one-pager at each size: no sideways scroll, every picture loaded, no small
 // buttons, and the same console, request and CSP rules.
 // Once per size it also tabs through the page (skip link first, a visible focus ring on every stop, nothing
 // off screen), checks that Escape closes the drawers, and that the arrow keys move between steps.
@@ -304,7 +304,7 @@ async function checkSize(browser, base, name, options, report) {
   return count;
 }
 
-/** The two static pages that sit beside the walkthrough: the talk page and the one-pager. */
+/** The two static pages that sit beside the walkthrough: the demo page and the one-pager. */
 async function checkPages(browser, base, name, options, report) {
   const [width, height] = dimensions(name);
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, isMobile: TOUCH.has(name), hasTouch: TOUCH.has(name) });

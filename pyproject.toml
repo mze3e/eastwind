@@ -1,13 +1,13 @@
 [project]
 name = "eastwind"
 version = "0.2.0"
-description = "Eastwind Private workshop demo: prove an eligibility answer was permitted, using kognita."
+description = "Eastwind Private: a governed-agents demo on kognita."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "The Eastwind Private Workshop Authors" }]
-keywords = ["kognita", "governance", "audit", "openai", "workshop"]
+keywords = ["kognita", "governance", "audit", "openai", "demo"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",

@@ -66,7 +66,7 @@ def icon(tone: str) -> Raw:
 
 
 def stamp(tone: str, text: str) -> Raw:
-    """A plain-word verdict. The word carries the meaning; the colour only backs it up."""
+    """A plain-word verdict. The word carries the meaning; the color only backs it up."""
     return h("span", icon(tone), text, cls=f"stamp {tone}")
 
 
@@ -153,7 +153,7 @@ def file_row(label: str, access: str, value: Any = None) -> Raw:
 
 
 def timeline(items: Iterable[tuple[str, str, str, str]]) -> Raw:
-    """Each item: (group, headline, detail, link-or-empty). The group picks the dot colour."""
+    """Each item: (group, headline, detail, link-or-empty). The group picks the dot color."""
     out = []
     for group, headline, detail, link in items:
         title = h("a", headline, href=link) if link else h("span", headline)
@@ -271,7 +271,7 @@ def render_page(title: str, body: Any, *, active: str = "", prefix: str = "", pu
                 h("header", h("a", h("i"), "Eastwind Private", href=f"{prefix}/", cls="brand"), story, cls="top"),
                 h("nav", groups, cls="main", aria_label="Console sections"),
                 h("main", h("h1", title), body, id="main"),
-                h("footer", "Workshop fiction. The clients, products and citations are invented. "
+                h("footer", "Fiction. The clients, products and citations are invented. "
                   "Everything technical is behind each page's “Show the mechanics”."))),
             lang="en"))
     return document

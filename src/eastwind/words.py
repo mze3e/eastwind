@@ -73,13 +73,13 @@ TOOL_WORDS = {
     "historical_eligibility": "Check past eligibility", "house_view": "Look up the house view",
     "vague_note": "Handle a vague note", "model_call": "Ask the AI model",
     "client_profile": "Read the client profile", "account_holdings": "Read the account holdings",
-    "summarize_review": "Summarise the review", "product_profile": "Read the product",
+    "summarize_review": "Summarize the review", "product_profile": "Read the product",
     "check_suitability": "Check suitability", "propose_trade": "Propose a trade",
     "approved_sources": "List approved sources", "retrieve_house_view": "Read the house view",
-    "summarize_research": "Summarise the research",
+    "summarize_research": "Summarize the research",
 }
 
-#: Evidence record types as a person would name them, with a colour group.
+#: Evidence record types as a person would name them, with a color group.
 EVENT_WORDS = {
     "POLICY_DECISION": ("Decision", "decision"), "TOOL_CALL": ("Tool used", "work"),
     "RETRIEVAL": ("Documents fetched", "work"), "MODEL_CALL": ("AI model called", "work"),
@@ -136,7 +136,7 @@ PWM_NODES = (  # (id, PWM class, label, ring)
 # One entry per capability. Titles and promises are plain; `see` says honestly where it can be seen:
 #   ("story", step id)   in the 3D walkthrough
 #   ("console", path)    on a page of the live console
-#   ("cli", command)     in the workshop command line only
+#   ("cli", command)     in the demo command line only
 #   ("none", "")         part of Kognita, with no demonstration here
 # Every row of the README feature map is here, and so is each item the README lists as having no
 # dedicated scenario. `tests/test_story.py` checks that the two stay in step.
@@ -199,7 +199,7 @@ CAPABILITIES = (
      "Each agent has a level of independence, its own credentials, and authority delegated by a person for a time.",
      ("story", "do-authority"), None),
     ("blast", "do", "Limiting the damage",
-     "Hard limits on reach, detection of unusual behaviour, containment of tainted data, and system triggers.",
+     "Hard limits on reach, detection of unusual behavior, containment of tainted data, and system triggers.",
      ("cli", "eastwind showcase blastradius anomaly taint triggers"), None),
     ("proposals", "do", "Proposals and recovery",
      "Changes to documents are proposed first, and a compensating action can undo what went wrong.",

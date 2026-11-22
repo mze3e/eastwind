@@ -62,16 +62,16 @@ export function buildBreak(ctx) {
   rackSign.position.set(0, 5.75, 0.95); rack.add(rackSign);
   const cable = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.09, 0.09), basic(C.cyan, 0.7));
   cable.position.set(GATE_AT.x + 3.4, 0.35, 0); group.add(cable);
-  const power = (k, colour = C.good) => {                       // 1 = on, 0 = off
-    for (const m of lamps) { m.color.set(k > 0.05 ? colour : 0x2a3a4e); m.emissive.set(k > 0.05 ? colour : 0x000000); m.emissiveIntensity = 1.4 * k; }
+  const power = (k, color = C.good) => {                       // 1 = on, 0 = off
+    for (const m of lamps) { m.color.set(k > 0.05 ? color : 0x2a3a4e); m.emissive.set(k > 0.05 ? color : 0x000000); m.emissiveIntensity = 1.4 * k; }
     cable.material.color.set(k > 0.05 ? C.cyan : C.bad); cable.material.opacity = k > 0.05 ? 0.7 : 0.9;
   };
 
   // ---------------------------------------------------------------- helpers
   const hand = () => new THREE.Vector3(ASKER.x + 0.7, 1.8, ASKER.z + 0.1);
   const counters = (passed) => ctx.setCounters([{ label: 'Record keeper', value: passed === null ? 'Working' : 'Down' }, { label: 'Passed on', value: passed ?? 0 }]);
-  const band = (text, colour) => panel(3.6, 0.6, (g, W, H) => {
-    g.clearRect(0, 0, W, H); g.fillStyle = css(colour); roundRect(g, 2, 2, W - 4, H - 4, H * 0.3); g.fill();
+  const band = (text, color) => panel(3.6, 0.6, (g, W, H) => {
+    g.clearRect(0, 0, W, H); g.fillStyle = css(color); roundRect(g, 2, 2, W - 4, H - 4, H * 0.3); g.fill();
     g.fillStyle = '#0b1626'; g.font = `800 ${H * 0.46}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, W / 2, H * 0.54);
   }, { ppu: 150 });
 
