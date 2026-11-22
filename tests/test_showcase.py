@@ -24,7 +24,7 @@ def test_authorise_fails_closed_and_stops_the_agent(tmp_path: Path):
     assert "DIFC_DFSA" in facts["deny_citations"]
     assert facts["allow_outcome"] == "ALLOW"
     assert facts["allow_retrieval"] is True
-    assert "House view — SGD money market eligibility" in facts["allow_titles"]
+    assert "House view - SGD money market eligibility" in facts["allow_titles"]
     assert facts["unzoned_hidden"] is True
     assert facts["c3_hidden"] is True
     assert facts["purpose_missing_outcome"] == "DENY"

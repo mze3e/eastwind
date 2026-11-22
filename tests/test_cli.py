@@ -51,7 +51,7 @@ def test_allow_cli_can_skip_the_model(tmp_path: Path, capsys):
     assert code == 0, captured.err
     out = captured.out
     assert "Decision  ALLOW" in out
-    assert "House view — SGD money market eligibility" in out
+    assert "House view - SGD money market eligibility" in out
     assert "Steering note" not in out
     assert "mei.tan@" not in out
     assert "SG-PB-1001842" not in out
@@ -84,3 +84,15 @@ def test_doctor_does_not_print_a_key(capsys, monkeypatch):
     assert "sk-test-secret-value" not in captured.out
     assert "OPENAI_API_KEY            set" in captured.out
     assert "kognita" in captured.out
+
+
+def test_portable_evidence_tampering_is_detected(tmp_path: Path, capsys):
+    db = tmp_path / "store.db"
+    original = tmp_path / "evidence.json"
+    edited = tmp_path / "edited.json"
+    assert main(["run", "deny", "--db", str(db), "--fresh"]) == 0
+    assert main(["evidence", "export", "--db", str(db), "-o", str(original)]) == 0
+    assert main(["evidence", "verify", "--file", str(original)]) == 0
+    assert main(["evidence", "tamper", "--file", str(original), "-o", str(edited)]) == 0
+    assert main(["evidence", "verify", "--file", str(edited)]) == 1
+    assert "BROKEN" in capsys.readouterr().err

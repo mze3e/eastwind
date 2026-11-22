@@ -44,7 +44,7 @@ CLIENTS: dict[str, dict[str, Any]] = {
         "email": "mei.tan@clients.eastwind.example",
         "account": "SG-PB-1001842",
         "domicile": "SG",
-        "booking_centre": "SG",
+        "booking_center": "SG",
         "accredited_investor": True,
     },
     "CL-2002": {
@@ -53,7 +53,7 @@ CLIENTS: dict[str, dict[str, Any]] = {
         "email": "lena.vogel@clients.eastwind.example",
         "account": "HK-PB-2002771",
         "domicile": "DE",
-        "booking_centre": "HK",
+        "booking_center": "HK",
         "accredited_investor": False,
     },
 }
@@ -78,7 +78,7 @@ HOUSE_QUERY = "Singapore money market eligibility accredited investor booking ce
 
 KNOWLEDGE: list[dict[str, Any]] = [
     {
-        "title": "House view — SGD money market eligibility",
+        "title": "House view - SGD money market eligibility",
         "body": (
             "Singapore booking centre money market eligibility. An accredited "
             "investor domiciled in Singapore may be told that the Eastwind Private "
@@ -115,7 +115,7 @@ KNOWLEDGE: list[dict[str, Any]] = [
         "source_label": "DFSA COB 3; GEN 2 (workshop fiction)",
     },
     {
-        "title": "Steering note — Mei Tan consolidation",
+        "title": "Steering note - Mei Tan consolidation",
         "body": (
             "Consolidation of the Mei Tan relationship across booking centres "
             "is need-to-know. Holdings and the timetable stay with the "
@@ -127,7 +127,7 @@ KNOWLEDGE: list[dict[str, Any]] = [
         "source_label": "Steering group minutes",
     },
     {
-        "title": "Unzoned draft — not visible",
+        "title": "Unzoned draft - not visible",
         "body": (
             "A note with no zone is not visible in any zone. "
             "Entitlement fails closed when the zone list is missing."
@@ -253,7 +253,7 @@ class EastwindPack:
             "actor_location": envelope.actor_location,
             "client_domicile": client.get("domicile"),
             "accredited_investor": bool(client.get("accredited_investor")),
-            "booking_centre": client.get("booking_centre"),
+            "booking_center": client.get("booking_center"),
             "product_kind": instrument.get("kind"),
             "instrument_origin": instrument.get("origin"),
         }
@@ -296,6 +296,16 @@ class EastwindPack:
 
 def seed_agent(session: Session) -> None:
     """Register ``eligibility-advisor`` once. The kill switch stays off."""
+    # Fictional contract records for the workshop's local provider stand-ins.
+    from kognita.providers import ProviderRecord, _DETAILS, _register
+
+    details = {**{key: "Workshop contract terms" for key in _DETAILS},
+               "use_cases": ["ELIGIBILITY_CHECK"], "sub_processors": [],
+               "training_use": False, "incident_history": [],
+               "regulatory_cooperation": "Workshop supervisory cooperation"}
+    for provider in ("127.0.0.1", "upstream.eastwind.example", "api.openai.com"):
+        if session.get(ProviderRecord, provider) is None:
+            _register(session, provider, details)
     existing = session.exec(select(Agent).where(Agent.name == AGENT_NAME)).first()
     if existing is not None and all(getattr(existing, key) is not None for key in (
         "deployment_date", "model", "principal", "tool_allowlist", "deployment_hash",
@@ -336,7 +346,7 @@ def seed_agent(session: Session) -> None:
         deployment={"system_prompt": "",
                     "instructions": "", "tools": [],
                     "permissions": permissions, "data_sources": ["Eastwind house view"],
-                    "orchestration": "one governed call", "memory_behaviour": "run scoped"})
+                    "orchestration": "one governed call", "memory_behavior": "run scoped"})
 
 
 _access_cache = WeakKeyDictionary()
@@ -463,7 +473,7 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
             rule_type="CLASSIFIER_CONFIDENCE",
             rule={"min_confidence": 0.8},
             citation=(
-                "Eastwind Private Product Governance Standard s9 — "
+                "Eastwind Private Product Governance Standard s9 - "
                 "uncertainty is not permission (workshop fiction)"
             ),
             effective_from=start,

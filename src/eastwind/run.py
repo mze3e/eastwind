@@ -3,7 +3,7 @@
 The order is the demo:
 
 1. Build an envelope of references.
-2. Resolve attributes and ``decide`` — before any knowledge retrieval.
+2. Resolve attributes and ``decide`` - before any knowledge retrieval.
 3. ``record`` the decision on the evidence chain.
 4. On DENY, return. ``retrieve`` is not called. The model callable is not called.
 5. On ALLOW, retrieve within entitlement, classify the prompt, and send it

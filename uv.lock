@@ -317,8 +317,8 @@ docling = [
 
 [package.metadata]
 requires-dist = [
-    { name = "kognita", extras = ["docling"], marker = "extra == 'docling'", specifier = ">=0.5.1,<0.6" },
-    { name = "kognita", extras = ["openai"], specifier = ">=0.5.1,<0.6" },
+    { name = "kognita", extras = ["docling"], marker = "extra == 'docling'", specifier = "==0.9.0" },
+    { name = "kognita", extras = ["openai"], specifier = "==0.9.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
 ]
 provides-extras = ["dev", "docling"]
@@ -575,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "kognita"
-version = "0.5.1"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -583,9 +583,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "sqlmodel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/a2/f7780f32212c0f6fb66ada0b2b1af5957e10fd7b20b61d41b3b7b2564dd8/kognita-0.5.1.tar.gz", hash = "sha256:2f908043b1cf4ec8cf37973a1ebda5be2227dad861b81772fd8346cd1153f341", size = 571840, upload-time = "2026-10-19T17:16:37.614Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/c2/194dd2013e57dc5be8be66a114d76e34ff4a79d7d0c957aaa0cfa9ef436d/kognita-0.9.0.tar.gz", hash = "sha256:e31c4ef682e75aba98d02958600f0db7afa03c6bb43aea0e10d1955454381b1f", size = 791904, upload-time = "2026-11-19T07:39:28.634Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/47/e8ce262698aadf577e465c5a26b68f95bcaeebd47334995dbe8bd1896113/kognita-0.5.1-py3-none-any.whl", hash = "sha256:be1d4c10e4928ccafebb1eeaddd26a9d89bd63efbb84e63898abe1bf1950d3e1", size = 398298, upload-time = "2026-10-19T17:16:36.021Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/3a/38f3646788fe0a7f777475a6b6fa6d71cf911e420d8f9e36d14891d1dabb/kognita-0.9.0-py3-none-any.whl", hash = "sha256:d51c92d026a94b9942b092d5f1eed07d68e3b0bda1b5f28122ae58d2c4c3428d", size = 527739, upload-time = "2026-11-19T07:39:26.855Z" },
 ]
 
 [package.optional-dependencies]

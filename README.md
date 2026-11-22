@@ -1,17 +1,26 @@
 # Eastwind Private
 
-Workshop demo for **Governed Agents That Survive Audit** (Ahmed Muzammil, AgentCon Singapore). [Kognita](https://github.com/mze3e/kognita) 0.5.1 decides whether an eligibility question was allowed before any knowledge is retrieved, cites the rule, and keeps a tamper-evident record. The same Eastwind Private pack then walks the rest of that surface: egress, classification, run budgets, human approval, pinned replay, the AI gateway, the MCP proxy, and the conformance kit. The 0.4 beats add the use-case register, the policy language, document ingestion, the interaction record with do-not-contact, governed client communication, outcomes and the review queue, the circuit breaker with revocation and kill-switch drills, packs, the flight recorder, and the framework adapters. The ten 0.5 scenarios add autonomy levels, workload credentials and child tasks, delegated authority, blast-radius limits, anomaly containment, taint isolation, system triggers, gateway-held provider keys, document proposals, and retryable recovery.
+Workshop demo for **Governed Agents That Survive Audit** (Ahmed Muzammil, AgentCon Singapore). [Kognita](https://github.com/mze3e/kognita) 0.9.0 decides whether an eligibility question was allowed before any knowledge is retrieved, cites the rule, and keeps a tamper-evident record. The same Eastwind Private pack then walks the rest of that surface: egress, classification, run budgets, human approval, pinned replay, the AI gateway, the MCP proxy, and the conformance kit. The 0.4 beats add the use-case register, the policy language, document ingestion, the interaction record with do-not-contact, governed client communication, outcomes and the review queue, the circuit breaker with revocation and kill-switch drills, packs, the flight recorder, and the framework adapters. The ten 0.5 scenarios add autonomy levels, workload credentials and child tasks, delegated authority, blast-radius limits, anomaly containment, taint isolation, system triggers, gateway-held provider keys, document proposals, and retryable recovery.
 
 Eastwind Private, its clients, and every citation below are workshop fiction. They are not legal advice.
 
-This checkout uses kognita 0.5.1 from `/workspace/blk/repo-051`, installed editable in `.venv` (its reported version may still be 0.5.0 before the release bump). While that release is awaiting PyPI, use the existing environment:
+Install the pinned dependencies and run the offline suite:
 
 ```bash
-uv run --no-sync eastwind showcase all --db /tmp/ew-tour
-uv run --no-sync pytest -m "not openai" -q
+uv sync --frozen --extra dev
+uv run eastwind showcase all --db /tmp/ew-tour
+uv run pytest -m "not openai" -q
 ```
 
-Both dependency extras require `>=0.5.1,<0.6`. `uv.lock` is deliberately unchanged and awaits a PyPI relock; do that before using the frozen Vercel installation. Avoid `uv sync` in this checkout until then.
+Portable evidence can be checked independently with Node 22 or newer:
+
+```bash
+eastwind evidence export --db .eastwind/evidence.db -o /tmp/evidence.json
+eastwind evidence verify --file /tmp/evidence.json --with-npm
+eastwind evidence tamper --file /tmp/evidence.json -o /tmp/edited.json
+```
+
+Both verifiers reject the edited export. Hash verification without an independently trusted checkpoint cannot detect a consistently rewritten chain.
 
 ## Projector runbook
 
@@ -36,14 +45,9 @@ The talk page is built when this repository deploys to Vercel. The build runs th
 
 https://eastwind-kognita.vercel.app
 
-`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]>=0.5.1,<0.6` in `pyproject.toml`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
+`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]==0.9.0` in `pyproject.toml`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
 
-With `OPENAI_API_KEY` set, use the live call in place of the echo, then verify again:
-
-```bash
-eastwind run allow
-eastwind verify
-```
+Direct provider calls are disabled until a governed provider adapter is configured. Use `--echo-model` for the offline demonstration.
 
 ## Quickstart
 
@@ -69,15 +73,15 @@ kognita evidence export --db .eastwind/evidence.db -o audit.json
 
 ## What you should see
 
-**DENY — cross-border structured note.** An AE relationship manager asks about a Germany-domiciled client and an HK-origin autocall. `decide` returns `DENY`. The basis names both regimes. Each citation is workshop fiction:
+**DENY - cross-border structured note.** An AE relationship manager asks about a Germany-domiciled client and an HK-origin autocall. `decide` returns `DENY`. The basis names both regimes. Each citation is workshop fiction:
 
-- `HK_SFC` — SFC Code of Conduct para 5.5 (workshop fiction)
-- `DIFC_DFSA` — DFSA COB 3; GEN 2 (workshop fiction)
-- `PRODUCT_GOVERNANCE` — Eastwind Private Product Governance Standard s9 (workshop fiction)
+- `HK_SFC` - SFC Code of Conduct para 5.5 (workshop fiction)
+- `DIFC_DFSA` - DFSA COB 3; GEN 2 (workshop fiction)
+- `PRODUCT_GOVERNANCE` - Eastwind Private Product Governance Standard s9 (workshop fiction)
 
 The register, identity and domain rules all contribute checks. The independent cross-border failures still decide `DENY`. Retrieval was not called. The model was not called. That request’s evidence is a single `POLICY_DECISION`.
 
-**ALLOW — Singapore money market.** An SG relationship manager asks about an accredited Singapore client and a non-complex money-market fund. `decide` returns `ALLOW`. Retrieval then returns the house view visible in zone `SG` at ceiling `C2`. A `C3` steering note that names the client stays in the store. A DFSA note zoned only for `AE` is not returned.
+**ALLOW - Singapore money market.** An SG relationship manager asks about an accredited Singapore client and a non-complex money-market fund. `decide` returns `ALLOW`. Retrieval then returns the house view visible in zone `SG` at ceiling `C2`. A `C3` steering note that names the client stays in the store. A DFSA note zoned only for `AE` is not returned.
 
 `eastwind run allow --echo-model` classifies the prompt as `C2` (it contains an email and an account number) and `EgressGuard` returns `REDACT`. The provider side sees `[TERM_1]`, `[EMAIL_1]`, and `[ACCOUNT_1]`. The caller sees those tokens restored. The echo destination is marked remote so the guard behaves as it will for OpenAI, and the callable itself stays on the machine.
 
@@ -123,7 +127,7 @@ Regimes engage only when they are in scope. `MAS_SG` engages for an SG actor wit
 
 The agent `eligibility-advisor` is on the registry, accountable to the Head of Conduct, Eastwind Private. An unregistered agent is denied. That case is in the conformance tests.
 
-kognita 0.5.1 decides every decision and execution path (`run_governed`, `ask`, the MCP proxy and the gateway) against the use-case register, and an empty register denies. `register_usecases()` in `pack.py` registers `ELIGIBILITY_CHECK` through `kognita.usecases` (appetite, register, rating approval by the control function, activation as live, tier 1) 30 days before the store is seeded, so its review date never lapses mid-talk. It approves three model cards: `upstream.eastwind.example/eastwind-stand-in`, `127.0.0.1/eastwind-local` (the in-process gateway beats), and `openai/gpt-4o-mini` (the model the 0.4 beats name on their egress calls). Owners and the control function are workshop fiction.
+kognita 0.9.0 decides every decision and execution path (`run_governed`, `ask`, the MCP proxy and the gateway) against the use-case register, and an empty register denies. `register_usecases()` in `pack.py` registers `ELIGIBILITY_CHECK` through `kognita.usecases` (appetite, register, rating approval by the control function, activation as live, tier 1) 30 days before the store is seeded, so its review date never lapses mid-talk. It approves three model cards: `upstream.eastwind.example/eastwind-stand-in`, `127.0.0.1/eastwind-local` (the in-process gateway beats), and `openai/gpt-4o-mini` (the model the 0.4 beats name on their egress calls). Owners and the control function are workshop fiction.
 
 Further regimes engage only for the tool that demonstrates them, so the original ALLOW and DENY envelopes still resolve the same way. `CLASSIFIER_GATE` covers free-text questions. `HANDLING` covers a typed classification. `CLIENT_LETTER` holds a letter for one human. `RELEASE_NOTE` holds a structured-note release for two signatures. `TOOL_BAR` refuses an autocall offer. `MONEY_MARKET_WINDOW` is the effective-dated domicile list. Citations stay the workshop fiction already on the pack.
 

@@ -1,4 +1,4 @@
-"""Eastwind Private — a workshop demo of governed eligibility on top of kognita.
+"""Eastwind Private - a workshop demo of governed eligibility on top of kognita.
 
 The decision engine is kognita. This package is a fictional private-banking
 domain pack, the ALLOW and DENY workshop runs, a tour of the kognita 0.4

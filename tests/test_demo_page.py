@@ -47,7 +47,7 @@ def test_talk_page_is_the_offline_projector_run(tmp_path: Path, monkeypatch: pyt
     assert "eastwind run allow --echo-model" in text
     assert "Decision  ALLOW" in text
     assert "Egress     REDACT" in text
-    assert "House view — SGD money market eligibility" in text
+    assert "House view - SGD money market eligibility" in text
     provider = text.split("panel provider", 1)[1].split("panel restored", 1)[0]
     restored = text.split("panel restored", 1)[1].split("Command output", 1)[0]
     assert "mei.tan@clients.eastwind.example" not in provider

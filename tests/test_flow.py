@@ -82,8 +82,8 @@ def test_allow_redacts_before_the_model_and_restores_the_reply():
     result = run_scenario("allow", engine=engine, completer=spy, destination_is_local=False)
     assert result.evaluation.outcome is Outcome.ALLOW
     assert result.retrieval_called is True
-    assert "House view — SGD money market eligibility" in result.retrieved_titles
-    assert "Steering note — Mei Tan consolidation" not in result.retrieved_titles
+    assert "House view - SGD money market eligibility" in result.retrieved_titles
+    assert "Steering note - Mei Tan consolidation" not in result.retrieved_titles
     assert "DFSA cross-border promotion" not in result.retrieved_titles
     assert result.classification is Classification.C2
     assert result.model_called is True

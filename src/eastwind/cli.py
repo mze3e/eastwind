@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -61,7 +62,7 @@ def _print_result(result: ScenarioResult, *, db: Path) -> None:
     evaluation = result.evaluation
     scenario = result.scenario
     envelope = evaluation.envelope
-    print(f"Scenario  {scenario.name} — {scenario.title}")
+    print(f"Scenario  {scenario.name} - {scenario.title}")
     print(f"  {scenario.blurb}")
     print()
     print("Envelope  (references only; the client row is not the prompt)")
@@ -121,7 +122,7 @@ def _print_result(result: ScenarioResult, *, db: Path) -> None:
             print(f"    {line}")
     else:
         reason = result.model_skip_reason or "not called"
-        print(f"Model call not made — {reason}")
+        print(f"Model call not made - {reason}")
     print()
     noun = "event" if result.chain_length == 1 else "events"
     print(
@@ -157,8 +158,10 @@ def _completer_for(call_model: bool) -> tuple[OpenAIChat | None, bool]:
     key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not key:
         return None, False
-    chat = OpenAIChat(api_key=key, model=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL))
-    return chat, chat.destination_is_local
+    raise RuntimeError(
+        "Direct provider calls are disabled. A governed gateway adapter is required; "
+        "use --echo-model for the offline demonstration."
+    )
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -191,7 +194,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(
                 "Callable   local echo. OpenAI was not contacted. "
                 "Destination local-echo is marked remote, so a C2 prompt is redacted "
-                "before the callable runs — the same guard a call to api.openai.com uses."
+                "before the callable runs - the same guard a call to api.openai.com uses."
             )
             print()
         if result.guard_denied:
@@ -234,6 +237,28 @@ def cmd_export(args: argparse.Namespace) -> int:
         )
     else:
         print(text)
+    return 0
+
+
+def cmd_evidence_verify(args: argparse.Namespace) -> int:
+    code = cmd_verify(args)
+    if not args.with_npm:
+        return code
+    if not args.file:
+        raise ValueError("--with-npm requires --file")
+    npm_code = subprocess.run(
+        ["npx", "--yes", "@kognita/verify@0.9.0", args.file], check=False
+    ).returncode
+    return int(bool(code or npm_code))
+
+
+def cmd_evidence_tamper(args: argparse.Namespace) -> int:
+    payload = json.loads(Path(args.file).read_text())
+    if not payload.get("events"):
+        raise ValueError("cannot tamper with an empty chain")
+    payload["events"][0]["actor_id"] += "-edited"
+    Path(args.output).write_text(json.dumps(payload, indent=2))
+    print(f"wrote tampered export to {args.output}")
     return 0
 
 
@@ -286,6 +311,23 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--correlation-id", help="mark one request as of interest")
     export.add_argument("-o", "--output", help="write to a file instead of stdout")
     export.set_defaults(func=cmd_export)
+
+    evidence = sub.add_parser("evidence", help="export and verify portable evidence")
+    evidence_sub = evidence.add_subparsers(dest="evidence_command", required=True)
+    evidence_export = evidence_sub.add_parser("export")
+    evidence_export.add_argument("--db", default=str(DEFAULT_DB))
+    evidence_export.add_argument("--correlation-id")
+    evidence_export.add_argument("-o", "--output")
+    evidence_export.set_defaults(func=cmd_export)
+    evidence_verify = evidence_sub.add_parser("verify")
+    evidence_verify.add_argument("--db", default=str(DEFAULT_DB))
+    evidence_verify.add_argument("--file")
+    evidence_verify.add_argument("--with-npm", action="store_true")
+    evidence_verify.set_defaults(func=cmd_evidence_verify)
+    evidence_tamper = evidence_sub.add_parser("tamper")
+    evidence_tamper.add_argument("--file", required=True)
+    evidence_tamper.add_argument("-o", "--output", required=True)
+    evidence_tamper.set_defaults(func=cmd_evidence_tamper)
 
     showcase = sub.add_parser(
         "showcase",

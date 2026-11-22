@@ -259,7 +259,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Governed Agents That Survive Audit — Eastwind Private</title>
+  <title>Governed Agents That Survive Audit - Eastwind Private</title>
   <meta name="description" content="Workshop fiction for Ahmed Muzammil's AgentCon Singapore talk. Offline DENY, ALLOW echo, and evidence verify.">
   <style>
     :root {{

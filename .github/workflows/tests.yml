@@ -17,3 +17,15 @@ jobs:
         run: uv run --no-sync pytest -m "not openai" -q
       - name: The tour, end to end
         run: uv run --no-sync eastwind showcase all --db "$RUNNER_TEMP/tour" > /dev/null
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify exported evidence with both implementations
+        run: |
+          uv run eastwind run deny --fresh --db "$RUNNER_TEMP/evidence.db"
+          uv run eastwind evidence export --db "$RUNNER_TEMP/evidence.db" -o "$RUNNER_TEMP/evidence.json"
+          uv run kognita evidence verify --file "$RUNNER_TEMP/evidence.json"
+          uv run eastwind evidence verify --file "$RUNNER_TEMP/evidence.json" --with-npm
+          uv run eastwind evidence tamper --file "$RUNNER_TEMP/evidence.json" -o "$RUNNER_TEMP/edited.json"
+          if uv run kognita evidence verify --file "$RUNNER_TEMP/edited.json"; then exit 1; fi
+          if npx --yes @kognita/verify@0.9.0 "$RUNNER_TEMP/edited.json"; then exit 1; fi
