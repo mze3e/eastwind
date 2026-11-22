@@ -18,7 +18,7 @@ from kognita.evidence import ChainBreak
 from kognita.vocabulary import CheckResult
 
 from eastwind import __version__
-from eastwind.openai_chat import DEFAULT_MODEL, OpenAIChat
+from eastwind.openai_chat import DEFAULT_MODEL
 from eastwind.run import ScenarioResult, run_scenario
 from eastwind.showcase import SCENARIO_ORDER, run_all, run_named
 
@@ -148,41 +148,61 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
 
         print(f"openai sdk                {getattr(openai, '__version__', 'installed')}")
     except ImportError:
-        print("openai sdk                not installed (pip install 'kognita[openai]')")
+        print("openai sdk                not installed (pip install 'eastwind[openai]')")
     return 0
 
 
-def _completer_for(call_model: bool) -> tuple[OpenAIChat | None, bool]:
-    if not call_model:
-        return None, False
-    key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not key:
-        return None, False
-    raise RuntimeError(
-        "Direct provider calls are disabled. A governed gateway adapter is required; "
-        "use --echo-model for the offline demonstration."
-    )
-
 
 def cmd_run(args: argparse.Namespace) -> int:
-    from eastwind.llm import Settings
+    from eastwind.llm import GatewayClient, MockClient, Settings
 
     llm = Settings.from_env(args.llm)
     if llm.provider != "mock":
         llm.validate()
-        raise ValueError("This legacy scenario does not support gateway identity binding; use the offline mock")
     db = _db_path(args.db)
     if args.fresh:
         _reset_store(db)
     engine = make_engine(db)
     names = ["deny", "allow"] if args.scenario == "both" else [args.scenario]
-    # Build the client once. DENY never calls it. A missing key leaves it None.
-    destination = "api.openai.com"
+    destination = "local-mock"
     if args.echo_model:
         completer, local = _echo_model, False
         destination = "local-echo"
+    elif args.skip_model:
+        completer, local = None, True
+    elif llm.provider == "mock":
+        completer, local = MockClient().answer, True
     else:
-        completer, local = _completer_for(not args.skip_model)
+        from kognita import Run, create_all
+        from kognita.models import RunRecord
+        from eastwind.pack import _headers, seed_agent, register_usecases
+
+        gateway_db = os.getenv("EASTWIND_LLM_GATEWAY_DB", "")
+        if not gateway_db:
+            raise ValueError("EASTWIND_LLM_GATEWAY_DB must name the gateway's SQLite store")
+        if not Path(gateway_db).is_file():
+            raise ValueError("the configured gateway store does not exist")
+        if Path(gateway_db).resolve() == db.resolve():
+            raise ValueError("the gateway store must be separate from the scenario store")
+        gateway_engine = make_engine(Path(gateway_db))
+        create_all(gateway_engine)
+        with Session(gateway_engine) as session:
+            seed_agent(session)
+            register_usecases(session)
+            identity = _headers(session, model=llm.model)
+            run = Run()
+            session.add(RunRecord(id=run.id))
+            identity["run_id"] = run.id
+            session.commit()
+        gateway_engine.dispose()
+        client = GatewayClient(llm, identity)
+
+        def completer(prompt: str) -> str:
+            result = client.complete([{"role": "user", "content": prompt}])
+            return result["choices"][0]["message"].get("content") or ""
+
+        local = False
+        destination = llm.provider
     exit_code = 0
     print("Eastwind Private")
     print()
@@ -280,6 +300,14 @@ def cmd_showcase(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_anthropic_bridge(args: argparse.Namespace) -> int:
+    from eastwind.llm.bridge import serve
+
+    serve(args.port, args.alias, os.getenv("EASTWIND_ANTHROPIC_BRIDGE_TOKEN", ""),
+          os.getenv("ANTHROPIC_API_KEY", ""))
+    return 0
+
+
 def cmd_mock_serve(args: argparse.Namespace) -> int:
     from eastwind.llm.server import serve
 
@@ -294,6 +322,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="Eastwind Private eligibility decisions, before retrieval or a model call.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    bridge = sub.add_parser("anthropic-bridge", help="serve the native Anthropic adapter behind Kognita")
+    bridge_sub = bridge.add_subparsers(dest="bridge_command", required=True)
+    bridge_serve = bridge_sub.add_parser("serve")
+    bridge_serve.add_argument("--alias", default="127.0.0.2")
+    bridge_serve.add_argument("--port", type=int, default=8093)
+    bridge_serve.set_defaults(func=cmd_anthropic_bridge)
 
     mock = sub.add_parser("mock-llm", help="run the local deterministic model service")
     mock_sub = mock.add_subparsers(dest="mock_command", required=True)

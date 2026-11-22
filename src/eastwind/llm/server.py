@@ -23,11 +23,8 @@ class MockHandler(BaseHTTPRequestHandler):
             if payload.get("stream"):
                 raise ValueError("streaming is not supported")
             workflow = payload.get("workflow", "client-review")
-            message = MockClient().complete(payload.get("messages", []), workflow=workflow)
-            result = {"id": "chatcmpl-eastwind", "object": "chat.completion", "created": 0,
-                      "model": payload.get("model", "eastwind-mock"),
-                      "choices": [{"index": 0, "message": message, "finish_reason": "tool_calls"}],
-                      "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+            result = MockClient().complete(payload.get("messages", []), workflow=workflow,
+                                           model=payload.get("model", "eastwind-mock"))
             raw = json.dumps(result).encode()
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             self.send_error(400, str(exc))

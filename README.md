@@ -22,6 +22,30 @@ eastwind evidence tamper --file /tmp/evidence.json -o /tmp/edited.json
 
 Both verifiers reject the edited export. Hash verification without an independently trusted checkpoint cannot detect a consistently rewritten chain.
 
+## Model configuration
+
+The default is a deterministic in-process mock, including when provider keys are present. `eastwind run allow --llm mock` runs offline. `eastwind mock-llm serve` starts an OpenAI-compatible mock at `http://127.0.0.1:8091`; use that origin as the upstream of `kognita serve`. Its responses contain reproducible tool calls. The in-process `GatewayClient` can also use the `mock` preset with a gateway URL and governed identity headers.
+
+Set `EASTWIND_LLM_PROVIDER` or use `--llm` on `eastwind run`. Available values are `mock`, `openai`, `anthropic`, `xai`, `ollama`, and `openai-compatible`. Set `EASTWIND_LLM_MODEL` to the approved model name. Provider origin presets are `https://api.openai.com`, `https://api.x.ai`, and `http://127.0.0.1:11434`; other compatible services such as vLLM, LM Studio, Groq, Together, and Mistral supply their own origin. `EASTWIND_LLM_BASE_URL` records the origin for the gateway command below; Eastwind never calls it directly. See `.env.example` for the key variable names and optional override. Ollama normally needs no key.
+
+Real requests require a separately running Kognita gateway, its SQLite store, an admitted agent, and an approved provider contract, model card, and use case in that store. Set `EASTWIND_LLM_GATEWAY_URL` to its local origin and `EASTWIND_LLM_GATEWAY_DB` to the same store passed to `kognita serve`. Keep it separate from the scenario store. Configure the provider credential as `KOGNITA_PROVIDER_KEY` in the gateway process; the client does not forward it. For example, after preparing the register and exporting the variables:
+
+```bash
+KOGNITA_PROVIDER_KEY="$OPENAI_API_KEY" kognita serve --provider openai-compatible \
+  --upstream "$EASTWIND_LLM_BASE_URL" --purpose ELIGIBILITY_CHECK \
+  --purposes ELIGIBILITY_CHECK --agent eligibility-advisor \
+  --principal rm.sg@eastwind.example --actor-location SG \
+  --db "$EASTWIND_LLM_GATEWAY_DB" --host 127.0.0.1 --port 8080
+# In another terminal, with the same environment:
+eastwind run allow --llm openai --db .eastwind/scenario.db
+```
+
+The workshop registers its fictional models only. Registering a different provider and model requires the operator to supply the relevant Kognita records and approvals; an absent or unapproved record denies the call. The gateway address, model, key, and matching gateway store must be configured before using a real provider. The client checks the gateway's response to catch common endpoint mistakes; that check does not authenticate a malicious local service, so protect the local host and gateway configuration.
+
+Anthropic's native API uses a local translation bridge because Kognita 0.9 accepts OpenAI-compatible upstreams. Install the optional `anthropic` extra, set `ANTHROPIC_API_KEY`, and generate `EASTWIND_ANTHROPIC_BRIDGE_TOKEN` as a random secret of at least 32 ASCII characters. Start `eastwind anthropic-bridge serve`, then start the gateway with upstream `http://127.0.0.2:8093` and `KOGNITA_PROVIDER_KEY` set to the bridge token. Set `NO_PROXY=127.0.0.1,127.0.0.2` for the gateway process if a proxy is configured. The gateway register must name `127.0.0.2` as the provider for the bridge model card and contract. The bridge accepts only the token and the `127.0.0.2` host; Kognita treats that upstream as remote and applies its remote egress policy before forwarding. The Anthropic key stays in the bridge environment. Point Eastwind at the gateway and select `--llm anthropic`. The bridge supports text, tool calls, and tool results; unsupported request options fail closed.
+
+Install the optional SDK extras with `uv sync --extra anthropic` or `uv sync --extra openai`. Live tests require explicit `EASTWIND_RUN_LIVE=1` and an appropriately configured gateway; the offline suite never contacts a real provider.
+
 ## Projector runbook
 
 Citations printed by these commands are workshop fiction.
@@ -45,9 +69,9 @@ The talk page is built when this repository deploys to Vercel. The build runs th
 
 https://eastwind-kognita.vercel.app
 
-`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]==0.9.0` in `pyproject.toml`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
+`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita==0.9.0` in `pyproject.toml`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
 
-Direct provider calls are disabled until a governed provider adapter is configured. Use `--echo-model` for the offline demonstration.
+Direct provider calls are disabled. Use `--echo-model` for the offline redaction demonstration or configure the gateway as described above.
 
 ## Quickstart
 
@@ -66,8 +90,10 @@ kognita evidence export --db .eastwind/evidence.db -o audit.json
 
 | Variable | Role |
 |---|---|
-| `OPENAI_API_KEY` | Sent only on the `ALLOW` path, and only inside `EgressGuard.send`. Absent: the decision and retrieval still run, and the model is not called. |
-| `OPENAI_MODEL` | Chat model. Default `gpt-4o-mini`. |
+| `EASTWIND_LLM_PROVIDER` | Provider preset; defaults to the offline mock. |
+| `EASTWIND_LLM_MODEL` | Approved model name; defaults depend on the selected provider. |
+| `EASTWIND_LLM_GATEWAY_URL` | Local gateway origin for real model calls. |
+| `EASTWIND_LLM_GATEWAY_DB` | Gateway evidence store, separate from the scenario store. |
 
 `--fresh` deletes the store first. Default path: `.eastwind/evidence.db`.
 
@@ -85,7 +111,7 @@ The register, identity and domain rules all contribute checks. The independent c
 
 `eastwind run allow --echo-model` classifies the prompt as `C2` (it contains an email and an account number) and `EgressGuard` returns `REDACT`. The provider side sees `[TERM_1]`, `[EMAIL_1]`, and `[ACCOUNT_1]`. The caller sees those tokens restored. The echo destination is marked remote so the guard behaves as it will for OpenAI, and the callable itself stays on the machine.
 
-With `OPENAI_API_KEY` set, `eastwind run allow` uses that same guard around a chat completion to `api.openai.com`. `MODEL_CALL` and `EGRESS` land on the chain with a manifest hash and no client content. `eastwind verify` reports the chain intact.
+The default model is the local mock, even if provider keys are present. A real provider requires the separately configured gateway described above. `MODEL_CALL` and `EGRESS` land on the chain with a manifest hash and no client content. `eastwind verify` reports the chain intact.
 
 ## From the talk to this repo
 
@@ -106,9 +132,9 @@ Kognita is the decision engine (`pip install kognita`, and `kognita[openai]` for
 2. The pack loads those rows so `decide` can see domicile, product kind, and the accredited-investor flag. Names, emails, and account numbers stay out of the attributes.
 3. `decide(envelope, load_snapshot(session), usecases=load_register(session), ...)` is pure. `record` appends `POLICY_DECISION`.
 4. `DENY` returns. Retrieval does not run. The OpenAI callable is not invoked.
-5. `ALLOW` calls `retrieve` inside the caller's zone and classification ceiling, classifies the prompt with `PatternClassifier`, and passes it to `EgressGuard.send`. The callable is an OpenAI chat completion (`src/eastwind/openai_chat.py`). The guard is the only path to the SDK.
+5. `ALLOW` calls `retrieve` inside the caller's zone and classification ceiling, classifies the prompt with `PatternClassifier`, and passes it to `EgressGuard.send`. The callable is the local mock by default; real model calls go through the gateway client in `src/eastwind/llm`.
 
-kognita ships the AI gateway (`kognita serve`) and `kognita.adapters.OpenAICompatibleEmbedder`. Chat completions are still the OpenAI SDK behind `EgressGuard.send` (`src/eastwind/openai_chat.py`). Retrieval in this demo uses `HashingEmbedder`, so the corpus stays on the machine. `eastwind showcase gateway` points that same SDK at `kognita serve`, which fronts a local stand-in. Swap in `OpenAICompatibleEmbedder` when you want hosted embeddings. Treat that endpoint as remote (`is_local` is false). `kognita scaffold` builds a separate app, so this pack does not run it.
+kognita ships the AI gateway (`kognita serve`) and `kognita.adapters.OpenAICompatibleEmbedder`. Chat completions use the gateway client behind `EgressGuard.send`. Retrieval in this demo uses `HashingEmbedder`, so the corpus stays on the machine. `eastwind showcase gateway` points the client at `kognita serve`, which fronts a local stand-in. Swap in `OpenAICompatibleEmbedder` when you want hosted embeddings. Treat that endpoint as remote (`is_local` is false). `kognita scaffold` builds a separate app, so this pack does not run it.
 
 `PatternRedactor` is a floor. It catches the email, account, and client-name patterns this demo plants in the prompt. It will miss a name written in prose that you did not list. A production pack should supply its own redactor. The tests check that the planted identifiers do not leave the guard.
 
@@ -169,13 +195,13 @@ Further regimes engage only for the tool that demonstrates them, so the original
 | `eastwind showcase recovery` | **0.5.1.** Three governed reversible local operations allow. `recover_run` compensates latest first; a failed compensation keeps the run paused and new work denied (`PAUSE`, `S6C-RECOVER`). Retry completes only the unfinished compensation and marks recovery complete. |
 
 
-The gateway beat uses `upstream.eastwind.example` resolving to `127.0.0.1`, so the origin looks remote while the bytes stay on this machine. It appends that hosts line when permitted. The serve store contains the approved agent and use-case register; domain policy rows belong to the pack-aware library and MCP scenarios. The SDK suppresses its default Authorization header with `Omit()`, supplies a workload credential and delegation, and binds sensitive calls to a persisted run. The stand-in returns an extra provider field that the gateway withholds through the purpose field allow-list.
+The gateway beat uses `upstream.eastwind.example` resolving to `127.0.0.1`, so the origin looks remote while the bytes stay on this machine. It appends that hosts line when permitted. The serve store contains the approved agent and use-case register; domain policy rows belong to the pack-aware library and MCP scenarios. The client supplies a workload credential and delegation, binds sensitive calls to a persisted run, and does not send provider credentials. The stand-in returns an extra provider field that the gateway withholds through the purpose field allow-list.
 
 For 0.5.1, agents declare deployment date, model, principal, reviewed deployment behavior, permitted systems and tools. The host issues workload credentials and human grants, then attenuates them into task delegations. Secrets stay out of evidence and checkpoints. Pure decisions and replay receive the effective use-case register; historical and conformance scenarios seed it at their observation time. Rejected and approved examples use distinct request arguments because approvals are exact and single-use. Framework bindings carry the same credentials and delegation IDs.
 
 The existing tool callbacks read or generate results; they do not send client messages or execute transactions. The proposal scenario separately applies a reviewed document change. MCP HTTP tools declared `draft`, `queue`, `send` or `execute` must declare `reversible: true` and a named compensation tool; closing the HTTP socket does not confirm backend cancellation. Tier 2+ execution belongs at gateway/MCP ingress (`S2-DEPLOYMENT-MODE`); the library examples use the registered tier 1 use case. Typed classification is a floor, and opaque file, image and audio attachments are refused before forwarding.
 
-The `providerkey` scenario runs `kognita serve` with `KOGNITA_PROVIDER_KEY`; `--provider-key` is the equivalent gateway configuration. Caller `authorization`, `x-api-key`, `api-key` and `x-goog-api-key` provider credentials are refused under `S2-PROVIDER-KEY`. Supported inference paths are exactly `/v1/chat/completions`, `/v1/completions`, `/v1/responses` and `/v1/embeddings`. Responses expose only explicitly allowed fields. The egress scenario opts into `EgressPolicy(trust_local=True)` for its trusted local example. The optional direct tier 1 OpenAI callable remains `eastwind run allow` when `OPENAI_API_KEY` is set.
+The `providerkey` scenario runs `kognita serve` with `KOGNITA_PROVIDER_KEY`; `--provider-key` is the equivalent gateway configuration. Caller `authorization`, `x-api-key`, `api-key` and `x-goog-api-key` provider credentials are refused under `S2-PROVIDER-KEY`. Supported inference paths are exactly `/v1/chat/completions`, `/v1/completions`, `/v1/responses` and `/v1/embeddings`. Responses expose only explicitly allowed fields. The egress scenario opts into `EgressPolicy(trust_local=True)` for its trusted local example. Real provider calls use the configured gateway.
 
 
 ## Tests
@@ -183,9 +209,9 @@ The `providerkey` scenario runs `kognita serve` with `KOGNITA_PROVIDER_KEY`; `--
 Offline tests cover `decide`, the dual-regime denial, the missing retrieval and model call, redaction with a fake completer, chain verification, tamper detection, the CLI, and every showcase scenario, including each 0.4 and 0.5 beat run twice in a row, field projection, attachment and endpoint refusal, credential secrecy, and classifier input hashes. The conformance kit’s human-approval case is bound to `draft_client_letter`, so that case runs here. The original ALLOW and DENY outcomes are unchanged. An absent purpose fails closed inside `eastwind showcase authorise`.
 
 ```bash
-uv run --no-sync pytest                 # live test skips without OPENAI_API_KEY
-uv run --no-sync pytest -m "not openai" -q
-uv run --no-sync pytest -m openai        # one real chat completion; needs the key
+uv run --no-sync pytest                 # live test is disabled by default
+uv run --no-sync pytest -m "not openai and not live" -q
+EASTWIND_RUN_LIVE=1 uv run --no-sync pytest -m live  # needs a configured gateway
 ```
 
 ## Layout

@@ -15,11 +15,13 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
-    "kognita[openai]==0.9.0",
+    "kognita==0.9.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+anthropic = ["anthropic>=0.49,<1"]
+openai = ["openai>=1,<2"]
 # Optional: the `eastwind showcase ingest` scenario parses a markdown house view.
 docling = ["kognita[docling]==0.9.0"]
 
@@ -41,4 +43,5 @@ where = ["src"]
 testpaths = ["tests"]
 markers = [
     "openai: live OpenAI call; skipped unless OPENAI_API_KEY is set",
+    "live: live provider test; excluded from offline runs",
 ]

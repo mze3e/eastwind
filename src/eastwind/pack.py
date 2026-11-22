@@ -303,7 +303,7 @@ def seed_agent(session: Session) -> None:
                "use_cases": ["ELIGIBILITY_CHECK"], "sub_processors": [],
                "training_use": False, "incident_history": [],
                "regulatory_cooperation": "Workshop supervisory cooperation"}
-    for provider in ("127.0.0.1", "upstream.eastwind.example", "api.openai.com"):
+    for provider in ("127.0.0.1", "upstream.eastwind.example"):
         if session.get(ProviderRecord, provider) is None:
             _register(session, provider, details)
     existing = session.exec(select(Agent).where(Agent.name == AGENT_NAME)).first()
@@ -334,7 +334,9 @@ def seed_agent(session: Session) -> None:
         review_date=datetime.now(timezone.utc) + timedelta(days=365),
         field_allowlist={PURPOSES[0]: [
             "$", "id", "object", "model", "choices.index", "choices.message.role",
-            "choices.message.content", "choices.finish_reason", "usage.prompt_tokens",
+            "choices.message.content", "choices.message.tool_calls.id",
+            "choices.message.tool_calls.type", "choices.message.tool_calls.function.name",
+            "choices.message.tool_calls.function.arguments", "choices.finish_reason", "usage.prompt_tokens",
             "usage.completion_tokens", "usage.total_tokens", "content.type", "content.text",
             "summary.$", "citations.label", "citations.classification", "graph.nodes", "graph.edges",
             "results.id", "results.title", "results.snippet", "results.kind", "results.classification",
@@ -376,7 +378,7 @@ def _access(session: Session, envelope: Envelope, *, at: datetime | None = None)
     client = scope.get("client", ["CL-1001"])[0]
     scope.setdefault("client", [client])
     if envelope.tool == "model_call":
-        scope["model"] = ["eastwind-local", "eastwind-stand-in"]
+        scope["model"] = list(dict.fromkeys([*scope.get("model", []), "eastwind-local", "eastwind-stand-in"]))
     grant_to(envelope.principal, "read", timedelta(hours=2), scope,
              session=session, evidence=writer, actor_id=AGENT_OWNER, now=when)
     delegation = delegate(session, Delegation(
@@ -391,10 +393,10 @@ def _access(session: Session, envelope: Envelope, *, at: datetime | None = None)
                    context={**envelope.context, "_agent_credential": secret})
 
 
-def _headers(session: Session, *, location: str = "SG") -> dict[str, str]:
+def _headers(session: Session, *, location: str = "SG", model: str | None = None) -> dict[str, str]:
     envelope = _access(session, Envelope(principal="rm.sg@eastwind.example",
         purpose=PURPOSES[0], tool="model_call", agent_name=AGENT_NAME,
-        actor_location=location))
+        subject_type="model" if model else None, subject_id=model, actor_location=location))
     return {"agent_name": AGENT_NAME, "agent_credential": envelope.context["_agent_credential"],
             "delegation_id": envelope.delegation_id}
 
