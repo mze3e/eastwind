@@ -605,6 +605,8 @@ def register_usecases(
     *,
     at: datetime | None = None,
     residual_materiality: str = "low",
+    retention_days: int | None = None,
+    deployment_mode: str | None = None,
 ) -> None:
     """Register, rate and activate every workshop purpose once.
 
@@ -689,6 +691,8 @@ def register_usecases(
             validators=(AGENT_OWNER,),
             agents=(AGENT_NAME,),
             approved_models=tuple(cards),
+            retention_days=retention_days,
+            deployment_mode=deployment_mode,
             approved_sources=("eastwind-house-view",),
             model_providers=tuple(sorted({card[0] for card in MODEL_CARDS})),
             ai_endpoints=("upstream.eastwind.example", "127.0.0.1", "api.openai.com"),

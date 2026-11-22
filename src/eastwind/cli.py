@@ -300,6 +300,50 @@ def cmd_showcase(args: argparse.Namespace) -> int:
     return 0
 
 
+def _pwm_graph(args: argparse.Namespace):
+    from eastwind.pwm import create_demo_store, export_graph
+
+    is_demo = args.db is None
+    db = Path(args.db) if args.db else Path(".eastwind/pwm/demo.db")
+    if not db.exists():
+        if not is_demo:
+            raise ValueError(f"PWM source store does not exist: {db}")
+        create_demo_store(db)
+    engine = make_engine(db)
+    try:
+        with Session(engine) as session:
+            return export_graph(session, demo_profile=is_demo or args.demo_profile,
+                                include_evidence=not args.no_evidence)
+    finally:
+        engine.dispose()
+
+
+def cmd_pwm_export(args: argparse.Namespace) -> int:
+    graph = _pwm_graph(args)
+    rdf = graph.serialize(format="turtle")
+    if args.output:
+        Path(args.output).write_text(rdf, encoding="utf-8")
+        print(f"wrote {len(graph)} RDF triples to {args.output}")
+    else:
+        print(rdf, end="")
+    return 0
+
+
+def cmd_pwm_validate(args: argparse.Namespace) -> int:
+    from rdflib import Graph
+    from eastwind.pwm import validate_graph
+
+    if args.input and args.file:
+        raise ValueError("provide one RDF input")
+    input_path = args.input or args.file
+    if input_path and args.db:
+        raise ValueError("provide an RDF input or --db, not both")
+    graph = Graph().parse(input_path) if input_path else _pwm_graph(args)
+    conforms, report = validate_graph(graph)
+    print(report, end="" if report.endswith("\n") else "\n")
+    return 0 if conforms else 1
+
+
 def cmd_workflow(args: argparse.Namespace) -> int:
     from eastwind.agents.workflows import WORKFLOWS, run_workflow
     from eastwind.llm import Settings
@@ -342,6 +386,22 @@ def build_parser() -> argparse.ArgumentParser:
         description="Eastwind Private eligibility decisions, before retrieval or a model call.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    pwm = sub.add_parser("pwm", help="export and validate PWM 0.10 RDF")
+    pwm_sub = pwm.add_subparsers(dest="pwm_command", required=True)
+    pwm_export = pwm_sub.add_parser("export")
+    pwm_export.add_argument("--db", help="existing Kognita SQLite store")
+    pwm_export.add_argument("--demo-profile", action="store_true", help="include recorded synthetic demo declarations")
+    pwm_export.add_argument("--no-evidence", action="store_true")
+    pwm_export.add_argument("-o", "--output", help="write Turtle to this file")
+    pwm_export.set_defaults(func=cmd_pwm_export)
+    pwm_validate = pwm_sub.add_parser("validate")
+    pwm_validate.add_argument("input", nargs="?", help="RDF file to validate")
+    pwm_validate.add_argument("--file", help="RDF file to validate")
+    pwm_validate.add_argument("--db", help="existing Kognita SQLite store")
+    pwm_validate.add_argument("--demo-profile", action="store_true")
+    pwm_validate.add_argument("--no-evidence", action="store_true")
+    pwm_validate.set_defaults(func=cmd_pwm_validate)
 
     from eastwind.agents.workflows import WORKFLOWS
     workflow = sub.add_parser("workflow", help="run synthetic wealth agent workflows")

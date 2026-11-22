@@ -52,6 +52,20 @@ Run `eastwind workflow all` for the offline mock-driven scenarios, or select `cl
 
 The rebalance scenario suspends a proposal for human approval; it never places a trade. It shows denial, approval, and a second approval stopped by the kill switch before release. The MCP scenario starts a local proxy and tool server; degraded mode uses a simulated evidence-store outage with an in-process gateway transport. `replay` uses an existing permitted review in the same workflow directory, creating one if needed. Workflows currently accept only `--llm mock`; a different selection fails closed.
 
+## PWM RDF
+
+The package includes unchanged PWM 0.10 draft ontology and shapes. To export and validate the synthetic example:
+
+```bash
+eastwind pwm export -o /tmp/eastwind-pwm.ttl
+eastwind pwm validate /tmp/eastwind-pwm.ttl
+eastwind pwm validate
+```
+
+The default commands create `.eastwind/pwm/demo.db` on first use. This separate synthetic Kognita store records a one-year retention period, a library deployment, and a labeled demo profile. The profile declares low impact, complexity and reliance; a live agent; and tools with no confirmed cancellation, individually governed steps, and no registered reversal. These are illustrative fields that Kognita does not store; the profile is bound to the recorded use-case and agent deployment hashes. Conformance of that profile is not an operational or supervisory attestation.
+
+Use `eastwind pwm export --db PATH -o export.ttl` to export another existing Kognita store. It maps its effective use cases, agents, permitted tools, registered source versions, and evidence hashes. Missing metadata stays missing, so `eastwind pwm validate export.ttl` can report nonconformance. `--demo-profile` includes the synthetic profile only when that store has a matching recorded profile. Use `--no-evidence` to omit evidence records. Export verifies the source evidence chain; SHACL validation checks RDF structure and does not independently verify event hashes or signatures. Use `kognita evidence verify --db PATH` for chain verification. Source, version, checksums, and licenses are in `src/eastwind/pwm_data/README.md`.
+
 ## Projector runbook
 
 Citations printed by these commands are workshop fiction.
