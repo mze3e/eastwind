@@ -380,12 +380,39 @@ def cmd_mock_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_admin(args: argparse.Namespace) -> int:
+    import ipaddress
+    import secrets
+
+    import uvicorn
+    from eastwind.admin import create_app
+
+    try:
+        local = args.host == "localhost" or ipaddress.ip_address(args.host).is_loopback
+    except ValueError:
+        local = False
+    if not local:
+        raise ValueError("admin must bind to a loopback address")
+    token = os.environ.get("EASTWIND_ADMIN_TOKEN") or secrets.token_urlsafe(32)
+    if not os.environ.get("EASTWIND_ADMIN_TOKEN"):
+        print(f"Generated local admin token: {token}", flush=True)
+    print(f"Eastwind Admin: http://{args.host}:{args.port}", flush=True)
+    uvicorn.run(create_app(Path(args.db), token), host=args.host, port=args.port, access_log=False)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eastwind",
         description="Eastwind Private eligibility decisions, before retrieval or a model call.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    admin = sub.add_parser("admin", help="serve the local administration UI")
+    admin.add_argument("--host", default="127.0.0.1")
+    admin.add_argument("--port", type=int, default=8090)
+    admin.add_argument("--db", default=".eastwind/admin", help="directory for admin stores")
+    admin.set_defaults(func=cmd_admin)
 
     pwm = sub.add_parser("pwm", help="export and validate PWM 0.10 RDF")
     pwm_sub = pwm.add_subparsers(dest="pwm_command", required=True)

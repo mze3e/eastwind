@@ -52,6 +52,14 @@ Run `eastwind workflow all` for the offline mock-driven scenarios, or select `cl
 
 The rebalance scenario suspends a proposal for human approval; it never places a trade. It shows denial, approval, and a second approval stopped by the kill switch before release. The MCP scenario starts a local proxy and tool server; degraded mode uses a simulated evidence-store outage with an in-process gateway transport. `replay` uses an existing permitted review in the same workflow directory, creating one if needed. Workflows currently accept only `--llm mock`; a different selection fails closed.
 
+## Local administration and guided tour
+
+Run `eastwind admin` and open `http://127.0.0.1:8090`. Set `EASTWIND_ADMIN_TOKEN` to choose an action token; otherwise the command prints a new one at startup. Enter it in each action form. Pages are readable locally without the token, so use this synthetic demo only on a trusted machine. The server accepts loopback bindings only. `--db DIR` selects the persistent admin stores; the default is `.eastwind/admin`.
+
+To see how the agent uses permitted context, acts within its mandate, and leaves a verifiable record, open **Admin > Tour: Permitted context, mandated action, provable record**. It links to role entitlements and client review, the agent registry and approval queue, and evidence verification, replay, and reconstruction. The rebalance action creates a suspended proposal; approve or deny it in the queue. To test a previously approved action, choose **Approve without release**, engage the kill switch, and resolve the approval: the proposal is withheld at release. No trade is placed.
+
+The budgets page lists actual run limits and usage; set the call budget in the workflow form. The tamper demonstration verifies an edited in-memory copy. PWM export and validation offer the admin store and a separate synthetic demo store with the recorded profile described below. Kill-switch, MCP, and degraded-mode drills also use isolated stores; the admin switch governs the main admin store and its pending proposals.
+
 ## PWM RDF
 
 The package includes unchanged PWM 0.10 draft ontology and shapes. To export and validate the synthetic example:

@@ -18,10 +18,15 @@ dependencies = [
     "kognita==0.9.0",
     "rdflib>=7.1,<8",
     "pyshacl>=0.30,<1",
+    "fastapi>=0.115,<0.130",
+    "uvicorn>=0.30,<1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = [
+    "httpx>=0.27,<1",
+    "pytest>=8.0",
+]
 anthropic = ["anthropic>=0.49,<1"]
 openai = ["openai>=1,<2"]
 # Optional: the `eastwind showcase ingest` scenario parses a markdown house view.

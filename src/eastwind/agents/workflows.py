@@ -202,7 +202,7 @@ def _data(result):
     return json.loads(result.data) if result.data else None
 
 
-def client_review(path: Path, *, role: str = "agent") -> WorkflowResult:
+def client_review(path: Path, *, role: str = "agent", max_calls: int = 4) -> WorkflowResult:
     agent = WealthAgent(path, role=role)
     result = WorkflowResult("client-review", database=str(path))
     from kognita.interaction import open_interaction
@@ -210,7 +210,7 @@ def client_review(path: Path, *, role: str = "agent") -> WorkflowResult:
     with Session(agent.engine) as session:
         interaction = open_interaction(session, client_id=CLIENT["id"], use_case=PURPOSES[0],
                                        evidence=agent.writer)
-        steps = agent.execute_plan(session, "client-review", run=Run(max_calls=4),
+        steps = agent.execute_plan(session, "client-review", run=Run(max_calls=max_calls),
                                    interaction_id=interaction.id)
         result.steps = [{"tool": step.evaluation.envelope.tool, "outcome": step.outcome.value,
                          "request_id": step.evaluation.request_id, "data": _data(step)} for step in steps]
