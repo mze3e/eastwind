@@ -46,6 +46,12 @@ Anthropic's native API uses a local translation bridge because Kognita 0.9 accep
 
 Install the optional SDK extras with `uv sync --extra anthropic` or `uv sync --extra openai`. Live tests require explicit `EASTWIND_RUN_LIVE=1` and an appropriately configured gateway; the offline suite never contacts a real provider.
 
+## Synthetic wealth workflows
+
+Run `eastwind workflow all` for the offline mock-driven scenarios, or select `client-review`, `suitability`, `rebalance`, `research`, `egress`, `budget`, `kill-switch`, `mcp`, `degraded`, or `replay`. Each uses a separate SQLite store under `.eastwind/workflows`; override the directory with `--db`. `client-review --role visitor` shows a denial before retrieval; use `--role relationship_manager` to inspect the synthetic human view. `suitability --product INS-HK-NOTE` shows an unsuitable product, and `research --source unapproved` stops before reading a source. The review and approval records are fictional.
+
+The rebalance scenario suspends a proposal for human approval; it never places a trade. It shows denial, approval, and a second approval stopped by the kill switch before release. The MCP scenario starts a local proxy and tool server; degraded mode uses a simulated evidence-store outage with an in-process gateway transport. `replay` uses an existing permitted review in the same workflow directory, creating one if needed. Workflows currently accept only `--llm mock`; a different selection fails closed.
+
 ## Projector runbook
 
 Citations printed by these commands are workshop fiction.

@@ -300,6 +300,26 @@ def cmd_showcase(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_workflow(args: argparse.Namespace) -> int:
+    from eastwind.agents.workflows import WORKFLOWS, run_workflow
+    from eastwind.llm import Settings
+
+    settings = Settings.from_env(args.llm)
+    if settings.provider != "mock":
+        raise ValueError("wealth workflows currently require the offline mock model")
+    names = list(WORKFLOWS) if args.name == "all" else [args.name]
+    for name in names:
+        options = {}
+        if name == "client-review":
+            options["role"] = args.role
+        elif name == "suitability":
+            options["product_id"] = args.product
+        elif name == "research":
+            options["source_id"] = args.source
+        print(run_workflow(name, Path(args.db), **options).text())
+    return 0
+
+
 def cmd_anthropic_bridge(args: argparse.Namespace) -> int:
     from eastwind.llm.bridge import serve
 
@@ -322,6 +342,16 @@ def build_parser() -> argparse.ArgumentParser:
         description="Eastwind Private eligibility decisions, before retrieval or a model call.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    from eastwind.agents.workflows import WORKFLOWS
+    workflow = sub.add_parser("workflow", help="run synthetic wealth agent workflows")
+    workflow.add_argument("name", choices=[*WORKFLOWS, "all"])
+    workflow.add_argument("--db", default=".eastwind/workflows", help="directory for workflow stores")
+    workflow.add_argument("--llm", choices=["mock", "openai", "anthropic", "xai", "ollama", "openai-compatible"])
+    workflow.add_argument("--role", choices=["agent", "relationship_manager", "visitor"], default="agent")
+    workflow.add_argument("--product", choices=["INS-MMF", "INS-HK-NOTE"], default="INS-MMF")
+    workflow.add_argument("--source", default="eastwind-house-view")
+    workflow.set_defaults(func=cmd_workflow)
 
     bridge = sub.add_parser("anthropic-bridge", help="serve the native Anthropic adapter behind Kognita")
     bridge_sub = bridge.add_subparsers(dest="bridge_command", required=True)

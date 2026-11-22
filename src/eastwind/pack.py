@@ -256,6 +256,7 @@ class EastwindPack:
             "booking_center": client.get("booking_center"),
             "product_kind": instrument.get("kind"),
             "instrument_origin": instrument.get("origin"),
+            "source_permitted": envelope.arguments.get("role", "agent") in {"agent", "relationship_manager"},
         }
         # A typed handling label is a floor. Sensitive text can raise it.
         if envelope.tool == "typed_classification":
@@ -285,6 +286,12 @@ class EastwindPack:
             return tool in {"injection_question", "typed_classification"}
         if policy.regime == "CLIENT_LETTER":
             return tool == "draft_client_letter"
+        if policy.regime == "ROLE_ENTITLEMENT":
+            return tool in {"client_profile", "account_holdings", "summarize_review", "product_profile",
+                            "check_suitability", "propose_trade", "approved_sources",
+                            "retrieve_house_view", "summarize_research"}
+        if policy.regime == "TRADE_PROPOSAL":
+            return tool == "propose_trade"
         if policy.regime == "RELEASE_NOTE":
             return tool == "release_structured_note"
         if policy.regime == "TOOL_BAR":
@@ -319,7 +326,9 @@ def seed_agent(session: Session) -> None:
         "check_eligibility", "classify_question", "injection_question", "classify_tool",
         "typed_classification", "draft_client_letter", "release_structured_note",
         "offer_autocall", "historical_eligibility", "house_view", "vague_note",
-        "model_call",
+        "model_call", "client_profile", "account_holdings", "summarize_review",
+        "product_profile", "check_suitability", "propose_trade", "approved_sources",
+        "retrieve_house_view", "summarize_research",
     )
     # These tools read or generate a result; none sends a message or applies a
     # transaction. Human approval policies still hold the letter and release.
@@ -377,6 +386,8 @@ def _access(session: Session, envelope: Envelope, *, at: datetime | None = None)
     scope = {kind: [ref] for kind, ref in envelope.all_subjects().items()}
     client = scope.get("client", ["CL-1001"])[0]
     scope.setdefault("client", [client])
+    if "instrument" in scope:
+        scope.setdefault("product", list(scope["instrument"]))
     if envelope.tool == "model_call":
         scope["model"] = list(dict.fromkeys([*scope.get("model", []), "eastwind-local", "eastwind-stand-in"]))
     grant_to(envelope.principal, "read", timedelta(hours=2), scope,
@@ -489,6 +500,20 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
                 "description": "This tool permits a typed public label only.",
             },
             citation="Eastwind Private Product Governance Standard s9 (workshop fiction)",
+            effective_from=start,
+        ),
+        Policy(
+            regime="ROLE_ENTITLEMENT",
+            rule_type="REQUIRES_FLAG",
+            rule={"flags": ["source_permitted"]},
+            citation="Eastwind synthetic source entitlement policy",
+            effective_from=start,
+        ),
+        Policy(
+            regime="TRADE_PROPOSAL",
+            rule_type="REQUIRES_HUMAN_APPROVAL",
+            rule={"tools": ["propose_trade"]},
+            citation="Eastwind simulated trade proposal approval policy",
             effective_from=start,
         ),
         Policy(
@@ -664,6 +689,7 @@ def register_usecases(
             validators=(AGENT_OWNER,),
             agents=(AGENT_NAME,),
             approved_models=tuple(cards),
+            approved_sources=("eastwind-house-view",),
             model_providers=tuple(sorted({card[0] for card in MODEL_CARDS})),
             ai_endpoints=("upstream.eastwind.example", "127.0.0.1", "api.openai.com"),
             jurisdiction="SG",
