@@ -1,8 +1,8 @@
-"""Fictional private-banking pack for the Eastwind Private workshop.
+"""Fictional private-banking pack for the Eastwind Private demo.
 
 Clients, booking centres, and product kinds are invented. Citations name the
-shape of a real regime so a talk can point at them; they are workshop
-fiction, not legal advice and not a compliance opinion.
+shape of a real regime so a reader can recognise them; they are fictional,
+not legal advice and not a compliance opinion.
 
 The pack supplies what kognita cannot know: how to load subjects by reference,
 which attributes a rule turns on, and which regimes are in scope.

@@ -1,4 +1,4 @@
-"""Command line for the Eastwind Private workshop demo."""
+"""Command line for the Eastwind Private governed-agents demo."""
 
 from __future__ import annotations
 
