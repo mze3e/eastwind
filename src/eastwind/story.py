@@ -44,65 +44,14 @@ from eastwind.cli import _echo_model
 from eastwind.pack import AGENT_NAME, AGENT_OWNER, CLIENTS, KNOWLEDGE
 from eastwind.pwm import LEVELS, P, create_demo_store, export_graph, validate_graph
 from eastwind.run import run_scenario
+from eastwind.words import (DESKS, EVENT_WORDS, FIELD_LABELS, FIELD_PHRASES, LEVEL_WORDS, OUTCOME_WORDS, PWM_NODES,
+                            REASONS, ROLE_WORDS, TOOL_WORDS)
 
 SCHEMA = 1
 
 # ---------------------------------------------------------------------------
-# Plain-English vocabulary. Raw codes stay in each step's ``mechanics``.
+# Plain-English vocabulary lives in eastwind.words, shared with the console. Raw codes stay in each step's ``mechanics``.
 # ---------------------------------------------------------------------------
-
-OUTCOME_WORDS = {"ALLOW": "Allowed", "DENY": "Blocked", "HUMAN_APPROVAL": "Waiting for a person",
-                 "ESCALATE": "Sent to a person"}
-
-FIELD_LABELS = {"name": "Name", "email": "Email", "risk_profile": "Risk profile",
-                "investment_horizon_years": "Investment horizon", "tax_identifier": "Tax ID"}
-
-FIELD_PHRASES = {"name": "name", "email": "email", "risk_profile": "risk profile",
-                 "investment_horizon_years": "investment horizon", "tax_identifier": "tax ID",
-                 "account": "account number"}
-
-DESKS = {"SG": "Singapore", "AE": "Dubai", "HK": "Hong Kong"}
-
-TOOL_WORDS = {"client_profile": "Read the client profile", "account_holdings": "Read the account holdings",
-              "product_profile": "Read the product", "summarize_review": "Summarise the review"}
-
-ROLE_WORDS = {"relationship_manager": "Relationship manager", "agent": "AI colleague", "visitor": "Visitor"}
-
-LEVEL_WORDS = ("Look things up", "Explain", "Recommend", "Draft", "Act after approval",
-               "Act within limits", "Act freely")
-
-#: Why a check failed, in words a director would use. Keyed by regime, then by check id.
-REASONS = {
-    "HK_SFC": "Hong Kong securities rules: this client lives outside the permitted countries.",
-    "DIFC_DFSA": "Dubai financial centre rules: this client lives outside the permitted countries.",
-    "PRODUCT_GOVERNANCE": "Product rules: this product is only for accredited investors, and this client is not one.",
-}  # S1-IDENTITY is built from the data in _reason: it names the two desks.
-
-#: Evidence record types, as a person would name them, and a colour group for the 3D chain.
-EVENT_WORDS = {
-    "POLICY_DECISION": ("Decision", "decision"), "TOOL_CALL": ("Tool used", "work"),
-    "RETRIEVAL": ("Documents fetched", "work"), "MODEL_CALL": ("AI model called", "work"),
-    "APPROVAL": ("Human approval", "human"), "INTERVENTION": ("Human step-in or stop", "human"),
-    "EGRESS": ("Outbound data check", "privacy"), "INTERACTION": ("Client conversation opened", "setup"),
-    "POLICY_CHANGE": ("Setup or rule change", "setup"), "CLAIM": ("Statement recorded", "work"),
-    "FINAL_DECISION": ("Final outcome", "final"),
-}
-
-PWM_NODES = (  # (id, PWM class, label, ring)
-    ("usecase", "AIUseCase", "AI use case", 0),
-    ("business", "BusinessOwner", "Business owner", 1),
-    ("technology", "TechnologyOwner", "Tech owner", 1),
-    ("control", "DesignatedControlFunction", "Control", 1),
-    ("risk", "RiskMaterialityAssessment", "Risk rating", 1),
-    ("agent", "AIAgent", "AI agent", 1),
-    ("model", "AIModel", "AI model", 2),
-    ("providers", "ModelProvider", "Providers", 2),
-    ("identity", "WorkloadIdentity", "Identity", 2),
-    ("tools", "Tool", "Tools", 2),
-    ("source", "ApprovedSource", "Source", 2),
-    ("retention", "RetentionPolicy", "Retention", 2),
-    ("evidence", "EvidenceRecord", "Evidence", 2),
-)
 
 COMMANDS = {
     "roles": "uv run eastwind workflow client-review --role agent",

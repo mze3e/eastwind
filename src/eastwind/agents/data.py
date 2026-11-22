@@ -4,6 +4,7 @@ from __future__ import annotations
 CLIENT = {"id": "CL-1001", "version": "1", "name": "Mei Tan", "email": "mei.tan@clients.eastwind.example",
           "risk_profile": "moderate", "investment_horizon_years": 5,
           "tax_identifier": "SYNTHETIC-TAX-001", "owner": "Relationship Management"}
+PROPOSAL_AMOUNT = 5000   # what the rebalance workflow proposes, in the account currency
 MANDATE = {"id": "MANDATE-1", "version": "1", "client_id": CLIENT["id"], "risk_ceiling": "moderate",
            "permitted_purposes": ["ELIGIBILITY_CHECK"], "approver": "risk.officer@eastwind.example"}
 ACCOUNT = {"id": "SG-PB-1001842", "version": "1", "client_id": CLIENT["id"], "currency": "SGD",
