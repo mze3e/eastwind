@@ -267,18 +267,23 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 
 def cmd_evidence_verify(args: argparse.Namespace) -> int:
+    if args.with_npm and not args.file:
+        raise ValueError("--with-npm requires --file")
     code = cmd_verify(args)
     if not args.with_npm:
         return code
-    if not args.file:
-        raise ValueError("--with-npm requires --file")
-    npm_code = subprocess.run(
-        ["npx", "--yes", "@kognita/verify@0.9.0", args.file], check=False
-    ).returncode
+    try:
+        npm_code = subprocess.run(
+            ["npx", "--yes", "@kognita/verify@0.9.0", args.file], check=False
+        ).returncode
+    except FileNotFoundError as exc:
+        raise ValueError("--with-npm requires Node 22 or later and npx") from exc
     return int(bool(code or npm_code))
 
 
 def cmd_evidence_tamper(args: argparse.Namespace) -> int:
+    if Path(args.file).resolve() == Path(args.output).resolve():
+        raise ValueError("tampered output must be a different file")
     payload = json.loads(Path(args.file).read_text())
     if not payload.get("events"):
         raise ValueError("cannot tamper with an empty chain")

@@ -54,4 +54,5 @@ testpaths = ["tests"]
 markers = [
     "openai: live OpenAI call; skipped unless OPENAI_API_KEY is set",
     "live: live provider test; excluded from offline runs",
+    "npm: independent npm verifier integration; opt in with EASTWIND_TEST_NPM=1",
 ]
