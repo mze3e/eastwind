@@ -40,4 +40,5 @@ fi
 test -s public/index.html
 test -s public/story/index.html
 test -s public/story/data.json
+test -s public/onepager/index.html
 test -s public/vendor/three/three.module.js

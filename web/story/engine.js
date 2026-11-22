@@ -141,6 +141,7 @@ export class Stage {
     this.paused = false;
     this.shiftX = 0;
     this.shiftTarget = 0;
+    this.speed = 1;   // a test hook: automated checks run the choreography faster
     this.wide = false;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0b1626);
@@ -233,7 +234,7 @@ export class Stage {
     requestAnimationFrame(this._loop);
     if (this.paused) return;
     const now = performance.now();
-    const dt = Math.min((now - this.last) / 1000, 0.1);
+    const dt = Math.min((now - this.last) / 1000, 0.1) * this.speed;
     this.last = now;
     this.time += dt;
     for (const item of [...this.tweens]) {

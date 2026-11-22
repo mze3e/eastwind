@@ -13,7 +13,8 @@ html, body { height: 100%; margin: 0; overflow: hidden; background: var(--navy);
 body[data-chapter="know"] { --accent: var(--cyan); }
 body[data-chapter="do"] { --accent: var(--amber); }
 body[data-chapter="prove"] { --accent: var(--blue); }
-body[data-chapter="colleague"], body[data-chapter="welcome"], body[data-chapter="recap"] { --accent: var(--gold); }
+body[data-chapter="break"] { --accent: var(--bad); }
+body[data-chapter="colleague"], body[data-chapter="welcome"], body[data-chapter="recap"], body[data-chapter="more"] { --accent: var(--gold); }
 
 #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
@@ -59,13 +60,15 @@ body.nogl .callouts { display: grid; gap: .35rem; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* Title-card steps: the caption is centred under a full-width overview. */
-body[data-layout="wide"] .panel { left: 50%; transform: translateX(-50%); width: min(960px, 92vw); top: auto; bottom: 5.4rem; align-items: center; text-align: center; }
+body[data-layout="wide"] .panel { left: 50%; transform: translateX(-50%); width: min(960px, 92vw); top: auto; bottom: 4.9rem; align-items: center; text-align: center; }
 body[data-layout="wide"] .panel h1 { font-size: clamp(2rem, 3.4vw, 3.2rem); }
 body[data-layout="wide"] .kicker { text-align: center; }
 body[data-layout="wide"] .point { max-width: 44rem; }
 body[data-layout="wide"] .legend { grid-template-columns: repeat(3, 1fr); width: 100%; }
 body[data-layout="wide"] .legend li { flex-direction: column; gap: .1rem; text-align: center; align-items: center; }
-body[data-layout="wide"] .choices { left: 1.2rem; }
+/* In the title card the choices flow inside the panel, under the caption. */
+body[data-layout="wide"] .choices { position: static; margin-top: .9rem; justify-content: center; }
+body[data-layout="wide"] .result { text-align: left; }
 
 /* --------------------------------------------------------------- choices */
 .choices { position: fixed; left: calc(min(460px, 38vw) + 2.4rem); right: 1.2rem; bottom: 4.9rem; z-index: 4; display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; pointer-events: none; }
@@ -76,6 +79,24 @@ body[data-layout="wide"] .choices { left: 1.2rem; }
 .choices button.picked { background: var(--accent); color: #0b1626; } .choices button.picked kbd { background: rgba(0, 0, 0, .15); color: #0b1626; }
 .choices button.nudge { animation: nudge 1.6s ease-in-out infinite; }
 @keyframes nudge { 0%, 100% { box-shadow: 0 8px 28px rgba(0, 0, 0, .4); } 50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, .12), 0 8px 28px rgba(0, 0, 0, .4); } }
+
+/* ------------------------------------------------------ the map of everything */
+body[data-layout="map"] .panel { left: 1.2rem; right: 1.2rem; width: auto; top: 4.6rem; bottom: 5.4rem; justify-content: flex-start; overflow: auto; pointer-events: auto;
+  padding: 1.1rem 1.4rem 1.4rem; border-radius: 18px; border: 1px solid var(--line); background: rgba(8, 16, 28, .86); backdrop-filter: blur(14px); }
+body[data-layout="map"] .point { background: none; border: 0; box-shadow: none; padding: 0; max-width: 56rem; backdrop-filter: none; }
+.map { margin-top: .8rem; }
+.mapbar { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .8rem; }
+.mapbar button { font: 650 .85rem var(--sans); color: var(--ink); background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 999px; padding: .4rem .9rem; cursor: pointer; }
+.mapbar button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #0b1626; }
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); gap: .7rem; }
+.tile { border: 1px solid var(--line); border-radius: 12px; padding: .8rem .95rem; background: rgba(255, 255, 255, .04); }
+.tile h3 { margin: .25rem 0 .25rem; font-size: 1.02rem; }
+.tile p { margin: 0 0 .45rem; font-size: .88rem; color: #cfdbea; }
+.tile .chip { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--gold); }
+.tile.g-know .chip { color: var(--cyan); } .tile.g-do .chip { color: var(--amber); } .tile.g-prove .chip { color: var(--blue); } .tile.g-break .chip { color: var(--bad); } .tile.g-more .chip { color: var(--muted); }
+.tile .where { font-size: .84rem; margin: 0; display: grid; gap: .2rem; }
+.tile .where a { color: var(--cyan); } .tile .where code { font: .76rem var(--mono); background: #050b14; padding: .12rem .35rem; border-radius: 5px; overflow-wrap: anywhere; }
+.map:not(.has-console) a.console { display: none; }
 
 /* --------------------------------------------------------------- drawers */
 .drawer { position: fixed; right: 1.2rem; top: 4.4rem; width: min(430px, 34vw); max-height: calc(100vh - 12rem); overflow: auto; z-index: 6; padding: 1rem 1.2rem; border-radius: 16px;
@@ -91,7 +112,7 @@ body[data-layout="wide"] .choices { left: 1.2rem; }
 .mech td:last-child { font-family: var(--mono); font-size: .8rem; }
 
 /* ---------------------------------------------------------------- footer */
-.foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: auto 1fr; gap: .4rem 1.2rem; align-items: center; padding: .7rem 1.2rem .8rem;
+.foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: auto 1fr auto; gap: .4rem 1.2rem; align-items: center; padding: .7rem 1.2rem .8rem;
   background: linear-gradient(0deg, rgba(11, 22, 38, .95), rgba(11, 22, 38, 0)); }
 .nav { display: flex; gap: .5rem; }
 .foot .primary { background: var(--accent); color: #0b1626; border-color: var(--accent); font-weight: 750; padding-inline: 1.2rem; }
@@ -102,6 +123,7 @@ body[data-layout="wide"] .choices { left: 1.2rem; }
 .dots button { width: .7rem; height: .7rem; padding: 0; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .2); }
 .dots button.gap { margin-left: .5rem; }
 .dots button.on { background: var(--accent); transform: scale(1.35); } .dots button.seen { background: rgba(255, 255, 255, .55); }
+.pathinfo { margin: 0; font-size: .82rem; font-weight: 650; color: var(--muted); text-align: right; }
 .honest { grid-column: 1 / -1; margin: 0; font-size: .78rem; color: var(--muted); }
 
 /* ------------------------------------------------------------ 3D labels */
@@ -120,7 +142,9 @@ body[data-layout="wide"] .choices { left: 1.2rem; }
 .tag.card li { display: flex; gap: .5rem; margin: .3rem 0; font-weight: 550; font-size: .86rem; opacity: 0; animation: rise .45s ease-out forwards; }
 .tag.card li b { flex: none; }
 
-.counters { position: fixed; display: flex; gap: .6rem; z-index: 3; pointer-events: none; }
+.counters { position: fixed; display: flex; gap: .6rem; z-index: 3; pointer-events: none; top: 4.1rem; left: calc(min(460px, 38vw) + 2.4rem); right: 1.2rem; justify-content: flex-start; }
+body[data-layout="wide"] .counters, body[data-layout="map"] .counters { left: 1.2rem; }
+.taglog { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .counter { padding: .35rem .8rem; border-radius: 10px; background: rgba(8, 16, 28, .86); border: 1px solid var(--line); font: 700 .95rem var(--sans); }
 .counter b { font-size: 1.25rem; color: var(--accent); margin-left: .3rem; }
 

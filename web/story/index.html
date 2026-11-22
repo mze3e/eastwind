@@ -22,13 +22,16 @@
     </div>
   </header>
 
-  <main class="panel" id="panel" aria-live="polite">
+  <main class="panel" id="panel">
     <p class="kicker" id="kicker"></p>
     <h1 id="title"></h1>
     <p class="point" id="point"></p>
     <ul class="legend" id="legend"></ul>
     <dl class="callouts" id="callouts"></dl>
-    <p class="result" id="result" hidden></p>
+    <div class="choices" id="choices" role="group" aria-label="Choose what to try"></div>
+    <p class="result" id="result" role="status" hidden></p>
+    <section class="map" id="map" aria-label="Everything else it can do" hidden></section>
+    <ul class="taglog" id="taglog" aria-label="What the picture shows"></ul>
   </main>
 
   <aside class="drawer notes" id="notes" hidden aria-label="Presenter notes">
@@ -44,14 +47,13 @@
     <table id="mech-facts"></table>
   </aside>
 
-  <div class="choices" id="choices" role="group" aria-label="Choose what to try"></div>
-
   <footer class="foot">
     <div class="nav">
       <button id="btn-back" type="button" aria-label="Previous step">&larr; Back</button>
       <button id="btn-next" type="button" class="primary" aria-label="Next step">Next &rarr;</button>
     </div>
     <ol class="dots" id="dots" aria-label="Progress"></ol>
+    <p class="pathinfo" id="pathinfo"></p>
     <p class="honest" id="honest"></p>
   </footer>
 
