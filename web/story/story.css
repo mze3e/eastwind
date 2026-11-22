@@ -161,9 +161,10 @@ body[data-layout="wide"] .counters, body[data-layout="map"] .counters { left: 1.
 .nogl[hidden] { display: none; }
 
 /* ------------------------------------------- small screens: the caption leaves the side of the picture
-   app.js sets body[data-shell]: "side" on wide windows, "sheet" (a panel under the picture) under 1100px wide,
-   "rail" (a panel at the left) under 600px high. Both of the last two are [data-compact]. body[data-size] is
-   "phone" under 700px wide or 600px high, "tablet" in between and "desktop" otherwise. The picture is framed
+   app.js sets body[data-shell]: "side" for windows of at least 1280 by 720, "rail" (a panel at the left) for the
+   rest that are wider than high and under 720px high, and "sheet" (a panel under the picture) for everything else.
+   The last two are [data-compact]. body[data-size] is "phone" under 700px wide or 500px high, "desktop" for the
+   side layout and "tablet" otherwise. The picture is framed
    in the space the caption leaves free. Labels in the picture are shown only in the wide layout. */
 body[data-compact] .top { padding: .5rem .8rem; gap: .6rem; }
 body[data-compact] #chapters { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-inline: .7rem;

@@ -44,7 +44,7 @@ Eighteen steps: a welcome with a choice of length; meet the colleague and its PW
 
 **The one-pager.** `/onepager/` is a single A4 page built from the same recording: four numbers, the three questions with a still from each scene, what happens when the record keeper fails, the capability count and what is real. It runs no script. Use the browser's Print command to save a PDF.
 
-**Small screens.** Under 1100px wide the caption becomes a sheet under the picture and the picture is framed in the space above it, the chapter buttons scroll sideways, and the dots give way to a progress bar. Under 600px high (a phone on its side) the caption becomes a rail at the left. In both small layouts the labels that float in the picture give way to a "What the picture shows" list in the caption, because even a 768px tablet has no room for them; they float only in the wide layout. That list is always there for screen readers.
+**Small screens.** The caption sits beside the picture in a window of at least 1280 by 720. In a wider-than-high window under 720px high (a laptop with a small browser area, a phone on its side) it becomes a rail at the left; in any other window (a tablet, a phone upright, a narrow window) it becomes a sheet under the picture, and the picture is framed in the space left over. In both, the chapter buttons scroll sideways and the dots give way to a progress bar. Press `F` for full screen to get the side-by-side layout on a small laptop. In both small layouts the labels that float in the picture give way to a "What the picture shows" list in the caption, because even a 768px tablet has no room for them; they float only in the wide layout. That list is always there for screen readers.
 
 **Keyboard and screen readers.** A skip link comes first, every control can be reached with Tab and shows a focus ring, each step is announced, and the keys above work without a mouse (Space and Enter never fire twice on a focused button). With "reduce motion" set, the camera cuts instead of gliding, the idle drift stops and animations shorten. `tests/test_story_access.py` works the contrast ratios out from the stylesheet and requires WCAG AA (4.5:1) for text.
 
@@ -60,7 +60,7 @@ How it stays honest:
 ```bash
 node scripts/check_story.cjs                       # builds and serves the site, then checks laptop, tablet and phone
 node scripts/check_story.cjs --all                 # desktop-wide 1920x1080, desktop 1440x810, laptop 1280x720,
-                                                   # side-minimum 1100x600 (the smallest window with the side-by-side layout),
+                                                   # laptop-short 1366x650 (a 1366x768 laptop's browser area),
                                                    # tablet-wide 1024x768, tablet 768x1024, phone 390x844, phone-landscape 844x390
 node scripts/check_story.cjs --sizes phone --steps know-border,break-outage
 node scripts/check_story.cjs --base http://127.0.0.1:8000/story/    # a server that is already running

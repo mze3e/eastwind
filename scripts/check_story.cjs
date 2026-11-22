@@ -38,7 +38,7 @@ try { ({ chromium } = require('playwright')); } catch (error) {
 
 const ROOT = path.resolve(__dirname, '..');
 const SIZES = {
-  'desktop-wide': [1920, 1080], desktop: [1440, 810], laptop: [1280, 720], 'side-minimum': [1100, 600],
+  'desktop-wide': [1920, 1080], desktop: [1440, 810], laptop: [1280, 720], 'laptop-short': [1366, 650],
   'tablet-wide': [1024, 768], tablet: [768, 1024], phone: [390, 844], 'phone-landscape': [844, 390],
 };
 const TOUCH = new Set(['tablet-wide', 'tablet', 'phone', 'phone-landscape']);

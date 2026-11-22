@@ -106,15 +106,15 @@ async function boot() {
   $('mech-real').textContent = `What is real here. Workshop fiction and synthetic data. ${whatIsReal}`;
 
   // ----------------------------------------------------------- layout
-  // Wide windows put the caption beside the picture. Narrow ones put it in a sheet under the picture, and short
-  // ones (a phone on its side) in a rail at the left. The engine frames the picture in whatever the caption
+  // Windows of at least 1280 by 720 put the caption beside the picture. Short, wide ones (a laptop with a small
+  // window, a phone on its side) put it in a rail at the left, and the rest (portrait, or narrow) in a sheet under the picture. The engine frames the picture in whatever the caption
   // leaves free, so it is told what is covered. Compact layouts list the labels as text instead; see the CSS.
   function applyShell() {
     const w = window.innerWidth, h = window.innerHeight, body = document.body;
-    const rail = h < 600, sheet = !rail && w < 1100;
-    const shell = rail ? 'rail' : sheet ? 'sheet' : 'side';
+    const side = w >= 1280 && h >= 720, rail = !side && w > h && h < 720;
+    const shell = side ? 'side' : rail ? 'rail' : 'sheet';
     body.dataset.shell = shell;
-    body.dataset.size = w < 700 || rail ? 'phone' : sheet ? 'tablet' : 'desktop';
+    body.dataset.size = w < 700 || h < 500 ? 'phone' : side ? 'desktop' : 'tablet';
     body.toggleAttribute('data-compact', shell !== 'side');
     const top = $('top').getBoundingClientRect().bottom, foot = $('foot').getBoundingClientRect().height;
     const root = document.documentElement.style;

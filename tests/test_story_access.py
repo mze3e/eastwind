@@ -122,9 +122,9 @@ def test_every_small_screen_rule_hangs_off_the_attributes_the_script_sets():
     for attribute in ('data-shell="sheet"', 'data-shell="rail"', "data-compact", 'data-size="phone"', 'data-size="tablet"'):
         assert attribute in css, attribute
     # The thresholds live in one place in the script; the CSS comment says what they are.
-    assert "const rail = h < 600, sheet = !rail && w < 1100;" in app
-    assert "w < 700 || rail ? 'phone'" in app
-    assert 'under 1100px wide' in css and 'under 600px high' in css and '700px' in css
+    assert "const side = w >= 1280 && h >= 720, rail = !side && w > h && h < 720;" in app
+    assert "w < 700 || h < 500 ? 'phone'" in app
+    assert 'at least 1280 by 720' in css and 'under 720px high' in css and '700px' in css
 
 
 def test_small_layouts_list_what_the_picture_shows_instead_of_floating_labels():
@@ -149,7 +149,7 @@ def test_the_browser_check_names_every_size_the_readme_promises():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     block = script.split("const SIZES = {", 1)[1].split("};", 1)[0]
     names = set(re.findall(r"'?([a-z-]+)'?: \[\d+, \d+\]", block))
-    assert names == {"desktop-wide", "desktop", "laptop", "side-minimum", "tablet-wide", "tablet", "phone", "phone-landscape"}
+    assert names == {"desktop-wide", "desktop", "laptop", "laptop-short", "tablet-wide", "tablet", "phone", "phone-landscape"}
     for name in names:
         assert name in readme, f"the README does not mention the {name} size"
 
