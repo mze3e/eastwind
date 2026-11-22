@@ -141,7 +141,7 @@ class ShowcaseResult:
 class _Story:
     def __init__(self, name: str, title: str) -> None:
         self.result = ShowcaseResult(name)
-        self.result.lines.append(f"Scenario  {name} — {title}")
+        self.result.lines.append(f"Scenario  {name} - {title}")
         self.result.lines.append(f"  eastwind showcase {name}")
         self.result.lines.append("")
 
@@ -331,8 +331,8 @@ def scenario_authorise(path: Path) -> ShowcaseResult:
     story.fact("allow_outcome", allowed.evaluation.outcome.value)
     story.fact("allow_retrieval", allowed.retrieval_called)
     story.fact("allow_titles", titles)
-    story.fact("unzoned_hidden", "Unzoned draft — not visible" not in titles)
-    story.fact("c3_hidden", "Steering note — Mei Tan consolidation" not in titles)
+    story.fact("unzoned_hidden", "Unzoned draft - not visible" not in titles)
+    story.fact("c3_hidden", "Steering note - Mei Tan consolidation" not in titles)
     story.say(f"ALLOW  {allowed.scenario.title}")
     story.say(f"outcome {allowed.evaluation.outcome.value}   retrieval called {allowed.retrieval_called}")
     for title in titles:
@@ -1366,20 +1366,13 @@ def scenario_gateway(path: Path) -> ShowcaseResult:
     )
     try:
         wait_for_port(port)
-        from openai import OpenAI, Omit
+        from eastwind.llm import GatewayClient, Settings
 
-        client = OpenAI(
-            api_key="workshop",
-            base_url=f"http://127.0.0.1:{port}/v1",
-            timeout=10,
-            max_retries=0,
+        client = GatewayClient(
+            Settings("ollama", "eastwind-stand-in", f"http://127.0.0.1:{port}", ""), headers
         )
-        completion = client.chat.completions.create(
-            model="eastwind-stand-in",
-            messages=[{"role": "user", "content": prompt}],
-            extra_headers={**headers, "Authorization": Omit()},
-        )
-        caller_text = completion.choices[0].message.content or ""
+        completion = client.complete([{"role": "user", "content": prompt}])
+        caller_text = completion["choices"][0]["message"]["content"] or ""
         missing_status, missing_body = _post_json(
             port,
             "/v1/chat/completions",

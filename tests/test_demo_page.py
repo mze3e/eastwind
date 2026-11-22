@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -24,6 +25,7 @@ def _builder():
 
 def test_talk_page_is_the_offline_projector_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-talk-page-must-not-leak")
+    monkeypatch.setenv("EASTWIND_LLM_PROVIDER", "openai")
     page = _builder().build_page(tmp_path / "index.html")
     text = (tmp_path / "index.html").read_text(encoding="utf-8")
     assert text == page
@@ -33,6 +35,8 @@ def test_talk_page_is_the_offline_projector_run(tmp_path: Path, monkeypatch: pyt
     assert "Governed Agents That Survive Audit" in text
     assert "5 November 2026" in text
     assert "Ahmed Muzammil" in text
+    assert 'href="/admin/"' in text
+    assert os.environ['EASTWIND_LLM_PROVIDER'] == 'openai'
 
     assert "eastwind run deny --fresh" in text
     assert "Decision  DENY" in text
@@ -47,7 +51,7 @@ def test_talk_page_is_the_offline_projector_run(tmp_path: Path, monkeypatch: pyt
     assert "eastwind run allow --echo-model" in text
     assert "Decision  ALLOW" in text
     assert "Egress     REDACT" in text
-    assert "House view — SGD money market eligibility" in text
+    assert "House view - SGD money market eligibility" in text
     provider = text.split("panel provider", 1)[1].split("panel restored", 1)[0]
     restored = text.split("panel restored", 1)[1].split("Command output", 1)[0]
     assert "mei.tan@clients.eastwind.example" not in provider

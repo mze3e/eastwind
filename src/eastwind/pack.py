@@ -44,7 +44,7 @@ CLIENTS: dict[str, dict[str, Any]] = {
         "email": "mei.tan@clients.eastwind.example",
         "account": "SG-PB-1001842",
         "domicile": "SG",
-        "booking_centre": "SG",
+        "booking_center": "SG",
         "accredited_investor": True,
     },
     "CL-2002": {
@@ -53,7 +53,7 @@ CLIENTS: dict[str, dict[str, Any]] = {
         "email": "lena.vogel@clients.eastwind.example",
         "account": "HK-PB-2002771",
         "domicile": "DE",
-        "booking_centre": "HK",
+        "booking_center": "HK",
         "accredited_investor": False,
     },
 }
@@ -78,7 +78,7 @@ HOUSE_QUERY = "Singapore money market eligibility accredited investor booking ce
 
 KNOWLEDGE: list[dict[str, Any]] = [
     {
-        "title": "House view — SGD money market eligibility",
+        "title": "House view - SGD money market eligibility",
         "body": (
             "Singapore booking centre money market eligibility. An accredited "
             "investor domiciled in Singapore may be told that the Eastwind Private "
@@ -115,7 +115,7 @@ KNOWLEDGE: list[dict[str, Any]] = [
         "source_label": "DFSA COB 3; GEN 2 (workshop fiction)",
     },
     {
-        "title": "Steering note — Mei Tan consolidation",
+        "title": "Steering note - Mei Tan consolidation",
         "body": (
             "Consolidation of the Mei Tan relationship across booking centres "
             "is need-to-know. Holdings and the timetable stay with the "
@@ -127,7 +127,7 @@ KNOWLEDGE: list[dict[str, Any]] = [
         "source_label": "Steering group minutes",
     },
     {
-        "title": "Unzoned draft — not visible",
+        "title": "Unzoned draft - not visible",
         "body": (
             "A note with no zone is not visible in any zone. "
             "Entitlement fails closed when the zone list is missing."
@@ -253,9 +253,10 @@ class EastwindPack:
             "actor_location": envelope.actor_location,
             "client_domicile": client.get("domicile"),
             "accredited_investor": bool(client.get("accredited_investor")),
-            "booking_centre": client.get("booking_centre"),
+            "booking_center": client.get("booking_center"),
             "product_kind": instrument.get("kind"),
             "instrument_origin": instrument.get("origin"),
+            "source_permitted": envelope.arguments.get("role", "agent") in {"agent", "relationship_manager"},
         }
         # A typed handling label is a floor. Sensitive text can raise it.
         if envelope.tool == "typed_classification":
@@ -285,6 +286,12 @@ class EastwindPack:
             return tool in {"injection_question", "typed_classification"}
         if policy.regime == "CLIENT_LETTER":
             return tool == "draft_client_letter"
+        if policy.regime == "ROLE_ENTITLEMENT":
+            return tool in {"client_profile", "account_holdings", "summarize_review", "product_profile",
+                            "check_suitability", "propose_trade", "approved_sources",
+                            "retrieve_house_view", "summarize_research"}
+        if policy.regime == "TRADE_PROPOSAL":
+            return tool == "propose_trade"
         if policy.regime == "RELEASE_NOTE":
             return tool == "release_structured_note"
         if policy.regime == "TOOL_BAR":
@@ -296,6 +303,16 @@ class EastwindPack:
 
 def seed_agent(session: Session) -> None:
     """Register ``eligibility-advisor`` once. The kill switch stays off."""
+    # Fictional contract records for the workshop's local provider stand-ins.
+    from kognita.providers import ProviderRecord, _DETAILS, _register
+
+    details = {**{key: "Workshop contract terms" for key in _DETAILS},
+               "use_cases": ["ELIGIBILITY_CHECK"], "sub_processors": [],
+               "training_use": False, "incident_history": [],
+               "regulatory_cooperation": "Workshop supervisory cooperation"}
+    for provider in ("127.0.0.1", "upstream.eastwind.example"):
+        if session.get(ProviderRecord, provider) is None:
+            _register(session, provider, details)
     existing = session.exec(select(Agent).where(Agent.name == AGENT_NAME)).first()
     if existing is not None and all(getattr(existing, key) is not None for key in (
         "deployment_date", "model", "principal", "tool_allowlist", "deployment_hash",
@@ -309,7 +326,9 @@ def seed_agent(session: Session) -> None:
         "check_eligibility", "classify_question", "injection_question", "classify_tool",
         "typed_classification", "draft_client_letter", "release_structured_note",
         "offer_autocall", "historical_eligibility", "house_view", "vague_note",
-        "model_call",
+        "model_call", "client_profile", "account_holdings", "summarize_review",
+        "product_profile", "check_suitability", "propose_trade", "approved_sources",
+        "retrieve_house_view", "summarize_research",
     )
     # These tools read or generate a result; none sends a message or applies a
     # transaction. Human approval policies still hold the letter and release.
@@ -324,7 +343,9 @@ def seed_agent(session: Session) -> None:
         review_date=datetime.now(timezone.utc) + timedelta(days=365),
         field_allowlist={PURPOSES[0]: [
             "$", "id", "object", "model", "choices.index", "choices.message.role",
-            "choices.message.content", "choices.finish_reason", "usage.prompt_tokens",
+            "choices.message.content", "choices.message.tool_calls.id",
+            "choices.message.tool_calls.type", "choices.message.tool_calls.function.name",
+            "choices.message.tool_calls.function.arguments", "choices.finish_reason", "usage.prompt_tokens",
             "usage.completion_tokens", "usage.total_tokens", "content.type", "content.text",
             "summary.$", "citations.label", "citations.classification", "graph.nodes", "graph.edges",
             "results.id", "results.title", "results.snippet", "results.kind", "results.classification",
@@ -336,7 +357,7 @@ def seed_agent(session: Session) -> None:
         deployment={"system_prompt": "",
                     "instructions": "", "tools": [],
                     "permissions": permissions, "data_sources": ["Eastwind house view"],
-                    "orchestration": "one governed call", "memory_behaviour": "run scoped"})
+                    "orchestration": "one governed call", "memory_behavior": "run scoped"})
 
 
 _access_cache = WeakKeyDictionary()
@@ -365,8 +386,10 @@ def _access(session: Session, envelope: Envelope, *, at: datetime | None = None)
     scope = {kind: [ref] for kind, ref in envelope.all_subjects().items()}
     client = scope.get("client", ["CL-1001"])[0]
     scope.setdefault("client", [client])
+    if "instrument" in scope:
+        scope.setdefault("product", list(scope["instrument"]))
     if envelope.tool == "model_call":
-        scope["model"] = ["eastwind-local", "eastwind-stand-in"]
+        scope["model"] = list(dict.fromkeys([*scope.get("model", []), "eastwind-local", "eastwind-stand-in"]))
     grant_to(envelope.principal, "read", timedelta(hours=2), scope,
              session=session, evidence=writer, actor_id=AGENT_OWNER, now=when)
     delegation = delegate(session, Delegation(
@@ -381,10 +404,10 @@ def _access(session: Session, envelope: Envelope, *, at: datetime | None = None)
                    context={**envelope.context, "_agent_credential": secret})
 
 
-def _headers(session: Session, *, location: str = "SG") -> dict[str, str]:
+def _headers(session: Session, *, location: str = "SG", model: str | None = None) -> dict[str, str]:
     envelope = _access(session, Envelope(principal="rm.sg@eastwind.example",
         purpose=PURPOSES[0], tool="model_call", agent_name=AGENT_NAME,
-        actor_location=location))
+        subject_type="model" if model else None, subject_id=model, actor_location=location))
     return {"agent_name": AGENT_NAME, "agent_credential": envelope.context["_agent_credential"],
             "delegation_id": envelope.delegation_id}
 
@@ -463,7 +486,7 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
             rule_type="CLASSIFIER_CONFIDENCE",
             rule={"min_confidence": 0.8},
             citation=(
-                "Eastwind Private Product Governance Standard s9 — "
+                "Eastwind Private Product Governance Standard s9 - "
                 "uncertainty is not permission (workshop fiction)"
             ),
             effective_from=start,
@@ -477,6 +500,20 @@ def seed_store(session: Session, embedder: HashingEmbedder | None = None) -> Non
                 "description": "This tool permits a typed public label only.",
             },
             citation="Eastwind Private Product Governance Standard s9 (workshop fiction)",
+            effective_from=start,
+        ),
+        Policy(
+            regime="ROLE_ENTITLEMENT",
+            rule_type="REQUIRES_FLAG",
+            rule={"flags": ["source_permitted"]},
+            citation="Eastwind synthetic source entitlement policy",
+            effective_from=start,
+        ),
+        Policy(
+            regime="TRADE_PROPOSAL",
+            rule_type="REQUIRES_HUMAN_APPROVAL",
+            rule={"tools": ["propose_trade"]},
+            citation="Eastwind simulated trade proposal approval policy",
             effective_from=start,
         ),
         Policy(
@@ -568,6 +605,8 @@ def register_usecases(
     *,
     at: datetime | None = None,
     residual_materiality: str = "low",
+    retention_days: int | None = None,
+    deployment_mode: str | None = None,
 ) -> None:
     """Register, rate and activate every workshop purpose once.
 
@@ -652,6 +691,9 @@ def register_usecases(
             validators=(AGENT_OWNER,),
             agents=(AGENT_NAME,),
             approved_models=tuple(cards),
+            retention_days=retention_days,
+            deployment_mode=deployment_mode,
+            approved_sources=("eastwind-house-view",),
             model_providers=tuple(sorted({card[0] for card in MODEL_CARDS})),
             ai_endpoints=("upstream.eastwind.example", "127.0.0.1", "api.openai.com"),
             jurisdiction="SG",

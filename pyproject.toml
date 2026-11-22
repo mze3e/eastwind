@@ -15,13 +15,22 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
-    "kognita[openai]>=0.5.1,<0.6",
+    "kognita==0.9.0",
+    "rdflib>=7.1,<8",
+    "pyshacl>=0.30,<1",
+    "fastapi>=0.115,<0.130",
+    "uvicorn>=0.30,<1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = [
+    "httpx>=0.27,<1",
+    "pytest>=8.0",
+]
+anthropic = ["anthropic>=0.49,<1"]
+openai = ["openai>=1,<2"]
 # Optional: the `eastwind showcase ingest` scenario parses a markdown house view.
-docling = ["kognita[docling]>=0.5.1,<0.6"]
+docling = ["kognita[docling]==0.9.0"]
 
 [project.scripts]
 eastwind = "eastwind.cli:main"
@@ -34,6 +43,9 @@ Kognita = "https://github.com/mze3e/kognita"
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.package-data]
+eastwind = ["pwm_data/*.ttl", "pwm_data/*.md", "pwm_data/*.txt"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
@@ -41,4 +53,6 @@ where = ["src"]
 testpaths = ["tests"]
 markers = [
     "openai: live OpenAI call; skipped unless OPENAI_API_KEY is set",
+    "live: live provider test; excluded from offline runs",
+    "npm: independent npm verifier integration; opt in with EASTWIND_TEST_NPM=1",
 ]

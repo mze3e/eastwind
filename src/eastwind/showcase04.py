@@ -46,7 +46,7 @@ class _Story:
         from eastwind.showcase import ShowcaseResult
 
         self.result = ShowcaseResult(name)
-        self.result.lines.append(f"Scenario  {name} — {title}")
+        self.result.lines.append(f"Scenario  {name} - {title}")
         self.result.lines.append(f"  eastwind showcase {name}")
         self.result.lines.append("")
 
@@ -750,8 +750,9 @@ def scenario_breaker(path: Path) -> Any:
 
     from eastwind.showcase import _chat_body, _gateway, _Spy
 
+    # No material prose is released in this connectivity and revocation drill.
     reply = json.dumps(
-        {"model": "eastwind-local", "choices": [{"message": {"content": "the market is open"}}]}
+        {"model": "eastwind-local", "choices": [{"message": {"content": ""}}]}
     ).encode()
     spy = _Spy(reply)
     gateway = _gateway(

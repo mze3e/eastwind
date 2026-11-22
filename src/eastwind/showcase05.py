@@ -105,14 +105,14 @@ def scenario_autonomy(path: Path) -> Any:
     story = _Story('autonomy', 'autonomy levels and reviewed deployments')
     engine, writer = _seeded(path)
     with Session(engine) as session:
-        env = _task(session, writer, client_envelope('check_eligibility'), actions=('read', 'analyse'))
+        env = _task(session, writer, client_envelope('check_eligibility'), actions=('read', 'analyze'))
         allowed = _call(session, writer, env)
         _show(story, 'allow', allowed, rules=('S1-IDENTITY', 'S1-DEPLOYMENT', 'S1-LEVEL'))
         permissions = _permissions(session)
-        permissions['historical_eligibility'].update(verb='analyse', required_level=1, permissions=['analyse'])
+        permissions['historical_eligibility'].update(verb='analyze', required_level=1, permissions=['analyze'])
         _configure(session, writer, tool_allowlist=permissions)
         denied = _call(session, writer, replace(env, tool='historical_eligibility'),
-                       registry=_registry('historical_eligibility', verb='analyse', required_level=1))
+                       registry=_registry('historical_eligibility', verb='analyze', required_level=1))
         _show(story, 'deny', denied, rules=('S1-LEVEL',))
         try:
             promote(session, AGENT_NAME, evidence=writer, actor_id=AGENT_OWNER,

@@ -1,206 +1,136 @@
 # Eastwind Private
 
-Workshop demo for **Governed Agents That Survive Audit** (Ahmed Muzammil, AgentCon Singapore). [Kognita](https://github.com/mze3e/kognita) 0.5.1 decides whether an eligibility question was allowed before any knowledge is retrieved, cites the rule, and keeps a tamper-evident record. The same Eastwind Private pack then walks the rest of that surface: egress, classification, run budgets, human approval, pinned replay, the AI gateway, the MCP proxy, and the conformance kit. The 0.4 beats add the use-case register, the policy language, document ingestion, the interaction record with do-not-contact, governed client communication, outcomes and the review queue, the circuit breaker with revocation and kill-switch drills, packs, the flight recorder, and the framework adapters. The ten 0.5 scenarios add autonomy levels, workload credentials and child tasks, delegated authority, blast-radius limits, anomaly containment, taint isolation, system triggers, gateway-held provider keys, document proposals, and retryable recovery.
+Eastwind is a synthetic wealth-management workshop built on `kognita==0.9.0`. It demonstrates policy checks before retrieval, governed agent tools, human approval, and tamper-evident records. Clients, data, policies, and trade proposals are fictional. No workflow places a trade.
 
-Eastwind Private, its clients, and every citation below are workshop fiction. They are not legal advice.
+## Offline quickstart
 
-This checkout uses kognita 0.5.1 from `/workspace/blk/repo-051`, installed editable in `.venv` (its reported version may still be 0.5.0 before the release bump). While that release is awaiting PyPI, use the existing environment:
-
-```bash
-uv run --no-sync eastwind showcase all --db /tmp/ew-tour
-uv run --no-sync pytest -m "not openai" -q
-```
-
-Both dependency extras require `>=0.5.1,<0.6`. `uv.lock` is deliberately unchanged and awaits a PyPI relock; do that before using the frozen Vercel installation. Avoid `uv sync` in this checkout until then.
-
-## Projector runbook
-
-Citations printed by these commands are workshop fiction.
+Python 3.12 or newer and [uv](https://docs.astral.sh/uv/) are required. The default model is deterministic and runs locally without a key.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-
-eastwind run deny --fresh
-eastwind run allow --echo-model
-eastwind verify
-eastwind showcase all
+uv sync --frozen --extra dev
+uv run eastwind workflow all
+uv run eastwind admin
 ```
 
-`deny` does not retrieve and does not call a model. `allow --echo-model` retrieves, then shows the redacted prompt and the restored reply with no API key. `verify` checks the hash chain in `.eastwind/evidence.db`. `showcase all` is the longer tour, one sqlite file per scenario under `.eastwind/showcase/`. It stays on this machine.
+Open `http://127.0.0.1:8090`. Set `EASTWIND_ADMIN_TOKEN` to choose an action token, or use the one printed at startup. Each action form asks for the token. Pages are readable without a token on the local host, so use synthetic data on a trusted machine. The server accepts loopback bindings only. Its persistent stores default to `.eastwind/admin`; use `--db DIR` to change them.
 
-## Live demo
+For the longer command-line showcase, run `uv run eastwind showcase all --db /tmp/eastwind-showcase`. Its gateway and MCP demonstrations use local stand-ins. The optional ingestion and framework-adapter examples report a skip when their extras are absent. The existing static page can be rebuilt with `uv run python scripts/build_demo_page.py`.
 
-The talk page is built when this repository deploys to Vercel. The build runs the three projector commands above, in that order, on a temporary store, and publishes their output as a static page. The build clears `OPENAI_API_KEY` and uses the offline echo model only.
+## Vercel public demo
 
-https://eastwind-kognita.vercel.app
+The Git-connected Vercel configuration builds the static talk page at `/` and routes `/admin/` to `api/index.py`, a Python 3.12 FastAPI function. The configuration sets `EASTWIND_PUBLIC_DEMO=1`; no provider key or admin token is needed. The function always uses the in-process mock and rejects real-provider requests. It does not start `kognita serve` or contact an external service. The MCP and degraded gateway drills need the local CLI and are disabled in the public UI.
 
-`scripts/vercel_build.sh` installs this package the way the projector runbook does (`pip` equivalent of `.[dev]`, Python 3.12 or newer, `kognita[openai]>=0.5.1,<0.6` in `pyproject.toml`) and `scripts/build_demo_page.py` writes `public/index.html`. Eastwind Private on that page is the same workshop fiction as the rest of this repo. `showcase all` stays on this machine: some of those beats bind a local port.
+Each function instance seeds synthetic records under `/tmp`. State is shared by visitors on that instance, can disappear on restart, and is not synchronized across instances. A later request may reach a different instance, so an approval can disappear between requests. Never enter real client data. The public evidence page verifies the Python chain and shows the npm command for local verification; it does not run npm in the function. The normal `eastwind admin` command remains token-protected and local-only.
 
-With `OPENAI_API_KEY` set, use the live call in place of the echo, then verify again:
+Dependencies come from `pyproject.toml` and `uv.lock`; optional development and provider extras are excluded from the function. Vercel's [Python runtime documentation](https://vercel.com/docs/functions/runtimes/python) describes the ASGI entrypoint and its 500 MB uncompressed bundle limit. The static page retains its restrictive content policy; the admin permits same-origin forms.
+
+## Guided tour
+
+To see how the agent uses permitted context, acts within its mandate, and leaves a verifiable record, go to **Admin > Tour: Permitted context, mandated action, provable record**:
+
+1. **Permitted context:** compare the relationship manager and agent in **Policies and entitlements**, then run **client-review** in **Workflows**. The agent sees masked or denied fields; the policy decision precedes retrieval. The **research** workflow checks the house-view source.
+2. **Mandated action:** inspect **Agents**, then run **rebalance**. The proposal suspends in **Approvals**. Approve or deny it to resume the run. To test release controls, approve a new proposal without releasing it, engage the **Kill switch**, then resolve it with approve. The stopped proposal is withheld.
+3. **Provable record:** inspect **Evidence**, verify the chain, and edit a copy in the tamper demonstration. Use **Replay** for a decision and **Reconstruction** for a review interaction. Missing evidence remains identified as missing.
+
+**Budgets** shows run limits and consumption. Set the call budget in the workflow form; a limit of two demonstrates exhaustion. The kill-switch, MCP, and degraded-mode drills use isolated stores. The admin switch governs the admin store and its pending approvals.
+
+## Workflows
+
+`uv run eastwind workflow NAME` accepts `client-review`, `suitability`, `rebalance`, `research`, `egress`, `budget`, `kill-switch`, `mcp`, `degraded`, `replay`, or `all`. Separate stores live under `.eastwind/workflows`, configurable with `--db DIR`. Examples:
 
 ```bash
-eastwind run allow
-eastwind verify
+uv run eastwind workflow client-review --role relationship_manager
+uv run eastwind workflow client-review --role visitor
+uv run eastwind workflow suitability --product INS-HK-NOTE
+uv run eastwind workflow research --source unapproved
 ```
 
-## Quickstart
+The visitor is denied before retrieval, the high-risk product is unsuitable for the synthetic mandate, and the unapproved source is not read. The rebalance CLI scenario demonstrates denial, approval, and a stop after approval. The admin version leaves proposals suspended for the queue. Replay uses an existing client review in the workflow directory or creates one if needed. Wealth workflows currently support `--llm mock` only; other providers fail closed.
 
-Python 3.12 or newer. The three commands above are the demo. The rest is for people reading ahead.
+## Models and the gateway
 
-`allow --skip-model` stops after retrieval. `both` runs DENY and then ALLOW on one store.
+`eastwind run allow --llm mock` uses the in-process mock. `eastwind mock-llm serve` exposes an OpenAI-compatible mock at `http://127.0.0.1:8091`, which can be configured as a Kognita gateway upstream. See `.env.example` for all settings; no keys are required for offline commands.
+
+For `eastwind run`, select `--llm openai`, `anthropic`, `xai`, `ollama`, or `openai-compatible`, or set `EASTWIND_LLM_PROVIDER`. `EASTWIND_LLM_MODEL` selects the approved model; the compatible preset requires it. Provider origin presets are `https://api.openai.com`, `https://api.x.ai`, and `http://127.0.0.1:11434`. Set `EASTWIND_LLM_BASE_URL` to the gateway's upstream origin for other compatible services such as vLLM, LM Studio, Groq, Together, or Mistral. `EASTWIND_LLM_KEY_ENV` optionally names a different key variable. Ollama normally needs no key.
+
+Real calls require a local `kognita serve` gateway and its existing SQLite store, with an admitted agent and approved use case, provider contract, and model card. Set `EASTWIND_LLM_GATEWAY_URL` to the gateway origin and `EASTWIND_LLM_GATEWAY_DB` to the store passed to the gateway. Keep that store separate from the Eastwind scenario store. The gateway owns the provider credential. For example, after preparing its registers and exporting the settings:
 
 ```bash
-cp .env.example .env
-eastwind run allow
-eastwind run both --fresh
-eastwind export -o audit.json
-kognita evidence verify --db .eastwind/evidence.db
-kognita evidence export --db .eastwind/evidence.db -o audit.json
+KOGNITA_PROVIDER_KEY="$OPENAI_API_KEY" kognita serve --provider openai-compatible \
+  --upstream "$EASTWIND_LLM_BASE_URL" --purpose ELIGIBILITY_CHECK \
+  --purposes ELIGIBILITY_CHECK --agent eligibility-advisor \
+  --principal rm.sg@eastwind.example --actor-location SG \
+  --db "$EASTWIND_LLM_GATEWAY_DB" --host 127.0.0.1 --port 8080
+# In another terminal, with the same model, gateway, and key settings:
+uv run eastwind run allow --llm openai --db .eastwind/scenario.db
 ```
 
-| Variable | Role |
+The gateway store must approve the selected provider and model; absent settings or approvals fail closed. Eastwind checks for the gateway's characteristic response but does not authenticate a malicious local service. Protect the host and gateway configuration.
+
+Anthropic uses a native adapter behind a local bridge. Install `uv sync --extra dev --extra anthropic`, set `ANTHROPIC_API_KEY`, and set `EASTWIND_ANTHROPIC_BRIDGE_TOKEN` to a random secret of at least 32 ASCII characters. Start `eastwind anthropic-bridge serve`; configure the gateway upstream as `http://127.0.0.2:8093` and its `KOGNITA_PROVIDER_KEY` as the bridge token. Register `127.0.0.2` as the provider for the bridge model card and contract. If a proxy is configured, set `NO_PROXY=127.0.0.1,127.0.0.2` for the gateway. Then select `--llm anthropic`. The bridge supports text, tool calls, and tool results; unsupported options fail closed. Optional SDK extras are `anthropic` and `openai`.
+
+## Evidence and PWM
+
+```bash
+uv run eastwind run deny --db /tmp/eastwind-evidence.db
+uv run eastwind evidence export --db /tmp/eastwind-evidence.db -o /tmp/eastwind-evidence.json
+uv run kognita evidence verify --file /tmp/eastwind-evidence.json
+uv run eastwind evidence verify --file /tmp/eastwind-evidence.json --with-npm
+uv run eastwind evidence tamper --file /tmp/eastwind-evidence.json -o /tmp/eastwind-edited.json
+scripts/check_evidence.sh /tmp/eastwind-evidence.json
+```
+
+The script verifies the original using Python and `npx --yes @kognita/verify@0.9.0`, then requires both to reject an edited copy. It needs Node 22 or later and npx; npx may download the published verifier. Both commands check hash integrity. Verification without an independently trusted checkpoint cannot detect a consistently rewritten chain. A public key is needed to independently authenticate signatures.
+
+```bash
+uv run eastwind pwm export -o /tmp/eastwind-pwm.ttl
+uv run eastwind pwm validate /tmp/eastwind-pwm.ttl
+```
+
+The default commands create `.eastwind/pwm/demo.db`, a separate synthetic register with a recorded illustrative profile for fields Kognita does not store. The profile is bound to use-case and deployment hashes and is not an operational attestation. Use `--db PATH` on `pwm export` or `pwm validate` to use an existing store. Missing metadata remains missing and can cause nonconformance; `--demo-profile` requires a matching recorded profile. `--no-evidence` omits evidence records. Export verifies the source chain, while SHACL validates RDF structure rather than signatures. The vendored PWM 0.10 source, checksums, and licenses are in `src/eastwind/pwm_data/README.md`. The admin PWM page offers both its store and the separate demo profile.
+
+## Feature map
+
+Run a showcase entry as `uv run eastwind showcase NAME`, a workflow as `uv run eastwind workflow NAME`, or use the named Admin page. Multiple names in a row cover related parts of a feature.
+
+| Kognita feature | Eastwind demonstration |
 |---|---|
-| `OPENAI_API_KEY` | Sent only on the `ALLOW` path, and only inside `EgressGuard.send`. Absent: the decision and retrieval still run, and the model is not called. |
-| `OPENAI_MODEL` | Chat model. Default `gpt-4o-mini`. |
+| Policy decisions, authorization before retrieval, role masking | Showcase `authorise`; workflow `client-review`; Admin Policies, Workflows |
+| Agent and use-case registry, lifecycle, model cards | Showcase `register`; Admin Agents, PWM |
+| Effective-dated policies, policy language and packs | Showcase `effective`, `policy`, `packs`; Admin Policies |
+| Classification and injection checks | Showcase `classify` |
+| Approved source register and grounding | Workflow `research`; Admin Policies, Workflows |
+| Egress, redaction, field minimization, opaque content refusal | Showcase `egress`, `providerkey`; workflow `egress` |
+| Run budgets and isolation | Showcase `budget`; workflow `budget`; Admin Budgets |
+| Human approvals, continuations, two signatures | Showcase `approval`; workflow `rebalance`; Admin Approvals |
+| Kill switch, revocation, circuit breaker and drills | Showcase `breaker`; workflow `kill-switch`, `rebalance`; Admin Kill switch, Approvals |
+| Gateway and provider-held credentials | Showcase `gateway`, `providerkey`; local mock server and gateway configuration above |
+| MCP proxy and governed tool calls | Showcase `mcp`; workflow `mcp` |
+| Fail-closed and degraded operation | Showcase `gateway`; workflow `degraded` |
+| Evidence chain, exports, independent verification and tamper detection | `eastwind evidence`; `scripts/check_evidence.sh`; Admin Evidence |
+| Replay, reconstruction, pinned decisions and retention | Showcase `replay`; workflow `replay`; Admin Replay, Reconstruction |
+| Ingestion, source locators and classifications | Showcase `ingest` (optional extra) |
+| Interactions, do-not-contact, client communication | Showcase `contact`, `communicate` |
+| Outcomes, review queue and monitoring | Showcase `outcomes`, `recorder` |
+| Conformance kit and framework bindings | Showcase `conformance`, `adapters` (some bindings require extras) |
+| Agent autonomy, credentials and delegated authority | Showcase `autonomy`, `credentials`, `authority`; Admin Agents |
+| Blast radius, anomaly containment, taint and system triggers | Showcase `blastradius`, `anomaly`, `taint`, `triggers` |
+| Document proposals and compensating recovery | Showcase `proposal`, `recovery` |
+| PWM 0.10 registers and SHACL | `eastwind pwm export`, `eastwind pwm validate`; Admin PWM |
 
-`--fresh` deletes the store first. Default path: `.eastwind/evidence.db`.
-
-## What you should see
-
-**DENY — cross-border structured note.** An AE relationship manager asks about a Germany-domiciled client and an HK-origin autocall. `decide` returns `DENY`. The basis names both regimes. Each citation is workshop fiction:
-
-- `HK_SFC` — SFC Code of Conduct para 5.5 (workshop fiction)
-- `DIFC_DFSA` — DFSA COB 3; GEN 2 (workshop fiction)
-- `PRODUCT_GOVERNANCE` — Eastwind Private Product Governance Standard s9 (workshop fiction)
-
-The register, identity and domain rules all contribute checks. The independent cross-border failures still decide `DENY`. Retrieval was not called. The model was not called. That request’s evidence is a single `POLICY_DECISION`.
-
-**ALLOW — Singapore money market.** An SG relationship manager asks about an accredited Singapore client and a non-complex money-market fund. `decide` returns `ALLOW`. Retrieval then returns the house view visible in zone `SG` at ceiling `C2`. A `C3` steering note that names the client stays in the store. A DFSA note zoned only for `AE` is not returned.
-
-`eastwind run allow --echo-model` classifies the prompt as `C2` (it contains an email and an account number) and `EgressGuard` returns `REDACT`. The provider side sees `[TERM_1]`, `[EMAIL_1]`, and `[ACCOUNT_1]`. The caller sees those tokens restored. The echo destination is marked remote so the guard behaves as it will for OpenAI, and the callable itself stays on the machine.
-
-With `OPENAI_API_KEY` set, `eastwind run allow` uses that same guard around a chat completion to `api.openai.com`. `MODEL_CALL` and `EGRESS` land on the chain with a manifest hash and no client content. `eastwind verify` reports the chain intact.
-
-## From the talk to this repo
-
-| The talk | Where it happens |
-|---|---|
-| Authorize before discovery | `src/eastwind/run.py` calls `decide` and `record` before `retrieve`. On `DENY`, `retrieve` is not called. |
-| Fail closed | `DENY > ESCALATE > HUMAN_APPROVAL > ALLOW`. One failing check denies. Both regimes are kept. |
-| Cited rules | Every `Check` carries `regime` and `citation`. The citations are workshop fiction. A check with an empty citation fails the conformance kit. |
-| Evidence you can verify and export | `EvidenceWriter` hash-chains `POLICY_DECISION`, and on allow also `RETRIEVAL`, `MODEL_CALL`, and `EGRESS`. `eastwind verify` and `kognita evidence verify` recompute the chain. `export` writes a portable artifact. |
-
-Kognita is the decision engine (`pip install kognita`, and `kognita[openai]` for the OpenAI SDK and embeddings adapter). This repo does not reimplement it.
-
-## How one request moves
-
-`src/eastwind/run.py` is the path the audience should read.
-
-1. The envelope names a principal, a purpose, a tool, a location, a client id, and an instrument id. It holds identifiers.
-2. The pack loads those rows so `decide` can see domicile, product kind, and the accredited-investor flag. Names, emails, and account numbers stay out of the attributes.
-3. `decide(envelope, load_snapshot(session), usecases=load_register(session), ...)` is pure. `record` appends `POLICY_DECISION`.
-4. `DENY` returns. Retrieval does not run. The OpenAI callable is not invoked.
-5. `ALLOW` calls `retrieve` inside the caller's zone and classification ceiling, classifies the prompt with `PatternClassifier`, and passes it to `EgressGuard.send`. The callable is an OpenAI chat completion (`src/eastwind/openai_chat.py`). The guard is the only path to the SDK.
-
-kognita ships the AI gateway (`kognita serve`) and `kognita.adapters.OpenAICompatibleEmbedder`. Chat completions are still the OpenAI SDK behind `EgressGuard.send` (`src/eastwind/openai_chat.py`). Retrieval in this demo uses `HashingEmbedder`, so the corpus stays on the machine. `eastwind showcase gateway` points that same SDK at `kognita serve`, which fronts a local stand-in. Swap in `OpenAICompatibleEmbedder` when you want hosted embeddings. Treat that endpoint as remote (`is_local` is false). `kognita scaffold` builds a separate app, so this pack does not run it.
-
-`PatternRedactor` is a floor. It catches the email, account, and client-name patterns this demo plants in the prompt. It will miss a name written in prose that you did not list. A production pack should supply its own redactor. The tests check that the planted identifiers do not leave the guard.
-
-## Domain pack
-
-`src/eastwind/pack.py`
-
-| | ALLOW | DENY |
-|---|---|---|
-| Principal | `rm.sg@eastwind.example` | `rm.ae@eastwind.example` |
-| Location | SG | AE |
-| Client | `CL-1001` Mei Tan, domicile SG, accredited | `CL-2002` Lena Vogel, domicile DE, not accredited |
-| Instrument | `INS-MMF` SGD money market, origin SG | `INS-HK-NOTE` autocall, origin HK |
-
-Regimes engage only when they are in scope. `MAS_SG` engages for an SG actor with a resolved client. `HK_SFC` and product governance engage for a structured note. `DIFC_DFSA` engages for an AE actor looking at a structured note. An un-engaged rule is skipped so it cannot deny a request it does not cover.
-
-The agent `eligibility-advisor` is on the registry, accountable to the Head of Conduct, Eastwind Private. An unregistered agent is denied. That case is in the conformance tests.
-
-kognita 0.5.1 decides every decision and execution path (`run_governed`, `ask`, the MCP proxy and the gateway) against the use-case register, and an empty register denies. `register_usecases()` in `pack.py` registers `ELIGIBILITY_CHECK` through `kognita.usecases` (appetite, register, rating approval by the control function, activation as live, tier 1) 30 days before the store is seeded, so its review date never lapses mid-talk. It approves three model cards: `upstream.eastwind.example/eastwind-stand-in`, `127.0.0.1/eastwind-local` (the in-process gateway beats), and `openai/gpt-4o-mini` (the model the 0.4 beats name on their egress calls). Owners and the control function are workshop fiction.
-
-Further regimes engage only for the tool that demonstrates them, so the original ALLOW and DENY envelopes still resolve the same way. `CLASSIFIER_GATE` covers free-text questions. `HANDLING` covers a typed classification. `CLIENT_LETTER` holds a letter for one human. `RELEASE_NOTE` holds a structured-note release for two signatures. `TOOL_BAR` refuses an autocall offer. `MONEY_MARKET_WINDOW` is the effective-dated domicile list. Citations stay the workshop fiction already on the pack.
-
-## Showcase
-
-`eastwind showcase <name>` prints one beat. `eastwind showcase all` runs them in this order. Each beat writes `.eastwind/showcase/<name>.db` and replaces what an earlier run left. Every beat runs offline with no API key. Gateway and MCP traffic uses local stand-ins; timings depend on the host and installed extras.
-
-| Command | What the room should see |
-|---|---|
-| `eastwind showcase authorise` | Outcome order `DENY > ESCALATE > HUMAN_APPROVAL > ALLOW`. The AE structured-note request is `DENY` with `HK_SFC` and `DIFC_DFSA` citations and a single `POLICY_DECISION`. Retrieval is not called. The SG money-market request is `ALLOW`, retrieval runs, and the `C3` note and the unzoned draft stay out. An absent purpose is `DENY` against the register. `unregistered-rogue-agent` is `DENY`. The kill switch on `eligibility-advisor` is `DENY` and names the Head of Conduct, Eastwind Private. |
-| `eastwind showcase egress` | `EgressGuard` on Mei Tan’s email, account, and name. `C1` to a remote destination is `ALLOW`. `C2` remote is `REDACT`: the provider side sees the tokens, the caller gets the identifiers back. `C2` to a local destination is `ALLOW` and the callable sees the email. `C3` remote raises before the callable. |
-| `eastwind showcase classify` | `ask()` on a vague eligibility question is `ESCALATE` below the confidence floor, with no retrieval. A clear email classifies `C2` and is `ALLOW`. Prompt text that names `C0`, a purpose, or a principal does not widen that decision. A claimed-public sentence stays on the classifier floor. `run_governed()` executes the clear tool and withholds the vague one. A typed `C0` is a floor: the classifier still runs, raises sensitive text to `C2`, and the public-only handling rule denies it. Argument keys and nested values are included in classifier input hashes. |
-| `eastwind showcase budget` | A `Run` with `max_calls=1` allows the first tool call and `DENY`s the second, citing `max_calls`. A run already past `wall_clock_seconds`, a `C2` tool under a `C1` `classification_ceiling`, and a call priced above `max_cost_usd` are each `DENY` citing that cap. The tool body ran once. |
-| `eastwind showcase approval` | `draft_client_letter` returns `HUMAN_APPROVAL`, writes a checkpoint, and does not call the tool. `continue_run()` without a grant does not execute. A granted approval resumes and the tool runs. `release_structured_note` needs two signatures: one mark leaves it unconfirmed and unexecuted; `confirm()` by the Head of Conduct, Eastwind Private, then `continue_run()`, runs it. |
-| `eastwind showcase replay` | The ALLOW decision replays `ALLOW`. Erasing the response body keeps that replay. `supersede_policy()` on the money-market window leaves the pinned decision matching. `kognita evidence reconstruct` writes `replay-report.json` and `replay-report.txt`. A tampered knowledge row and a tampered retained prompt fail replay. An in-place citation edit is refused; the same citation written into the row fails replay. |
-| `eastwind showcase effective` | Lena Vogel, domicile DE, asked from HK about the SGD money market. As of March 2026 the window denies Germany. The April successor adds DE. Asking again as of March is still `DENY`. As of October 2026 it is `ALLOW`. `replay_decision()` of the recorded March decision stays `DENY`. |
-| `eastwind showcase gateway` | `kognita serve` fronts a local OpenAI-compatible stand-in. The SDK’s `base_url` is that gateway. The listed agent is forwarded; the caller sees Mei Tan’s email and the stand-in does not. A missing agent name and an unlisted agent are HTTP 403 `DENY`. With the evidence store down, `FAIL_CLOSED` returns 503 and does not forward. `DEGRADED` forwards only a local model below `C2`, then writes the `ALLOW` once the store answers again. A remote destination, and a local email whose header claims `C0`, are `DENY` and are not forwarded. An approved system trigger is forwarded as actor `SYSTEM`. |
-| `eastwind showcase mcp` | `kognita serve --mcp` fronts a local MCP server of Eastwind tools. `house_view` is forwarded. `offer_autocall` is `DENY`, `vague_note` is `ESCALATE`, and `draft_client_letter` is `HUMAN_APPROVAL`. Those three never reach the tool server. |
-| `eastwind showcase conformance` | kognita’s conformance kit, bound to this pack, including the human-approval envelope. Each `test_*` prints `PASS`. |
-| `eastwind showcase register` | **0.4.** A store with an empty use-case register is `DENY` citing `USE_CASE_REGISTERED`, and the tool does not run. The seeded store lists `ELIGIBILITY_CHECK` (tier 1, live) and its three model cards; the same call is `ALLOW` and cites the accountable owner. Suspending the use case is `DENY` again. |
-| `eastwind showcase policy` | **0.4.** A YAML rule with colocated scenarios passes `kognita policy validate --strict` and `kognita policy test`. An uncited draft with a `[NEEDS CLARIFICATION]` marker fails strict validation and `kognita policy load`. `kognita policy diff` shows GB added under `## MODIFIED`. `kognita policy explain` on a DE client is `DENY` with the FAA-G11 citation. |
-| `eastwind showcase ingest` | **0.4, optional.** With `pip install -e '.[docling]'`, a markdown house view is ingested one item per section, each with a locator (document, section path, character range) and the rule that classified it; the steering-group section is `C3`. An empty zone list is refused. Without the extra the beat prints how to install it and skips. |
-| `eastwind showcase contact` | **0.4.** One interaction record per client. Origination records do-not-contact (vulnerability); a retry is refused, and a message on a new interaction is `DENY` citing do-not-contact. A reversal by the Head of Conduct that cites a conduct review lifts it, and the message is sent. `reconstruct` answers its ten questions from that record. |
-| `eastwind showcase communicate` | **0.4.** Personal WhatsApp cannot be registered as a channel. Without a final decision, via Telegram, or with a "guaranteed" claim, a client message is `DENY` with the citation. Secure Message with general information is `ALLOW`. A run is paused, overridden and recovered by a named human, each citing a rule. A client complaint goes through `record_outcome` and links the output, model version and approver. |
-| `eastwind showcase outcomes` | **0.4.** A correction outcome links to the model output; a free-text kind is refused. A verifier block is a recorded near miss, and a denied call is a derived one. A high-risk response is queued for review and a confirmed problem is recorded. Cycle time, decision quality and reliability print with their citations; review coverage is per use case. |
-| `eastwind showcase breaker` | **0.4.** A material use case with no drill scheduled is `DENY`; `run_kill_switch_drill` records who, how fast and the fallback, then it is `ALLOW`. Two unsafe drafts against a threshold of two trip the circuit breaker (`DENY`, `CIRCUIT_BREAKER`) until the owner resets it. Revoking the gateway provider is HTTP 403 and nothing is forwarded; reinstating restores it. A revoked agent's kill switch cannot be released. `affected_clients` lists CL-1001 for the model. |
-| `eastwind showcase packs` | **0.4.** `kognita packs list` shows the hyphenated built-in packs, `show private-banking` its rules, and `load two-signature-approval-chains` compiles one into the store. `update_pack` with a tampered file is refused and keeps the installed pack; with the pin matching it installs. Both leave `POLICY_CHANGE` evidence. The transport serves the wheel's own files, so this runs offline. |
-| `eastwind showcase recorder` | **0.4.** `kognita recorder runs`, `show` (the denied run's failing checks and citations), `export` and `alerts` (repeated denials fires). OpenTelemetry attaches only with `kognita[otel]` and `OTEL_EXPORTER_OTLP_ENDPOINT`; otherwise it is refused and says why. |
-| `eastwind showcase adapters` | **0.4, optional extras.** Reports which of `kognita[hermes-agent]`, `[openai-agents]`, `[langgraph]` and `[pydantic-ai]` are installed and skips the rest. The binding every adapter shares wraps an Eastwind tool: CL-1001 is `ALLOW`, CL-2002 raises with the MAS citation and the body is not called. The Hermes `pre_tool_call` hook returns `block`. |
-| `eastwind showcase autonomy` | **0.5.1.** Reviewed L0 reads allow; L1 analysis denies (`S1-IDENTITY`, `S1-DEPLOYMENT`, `S1-LEVEL`). Promotion without validated metric gates is refused (`S1-PROMOTION`). |
-| `eastwind showcase credentials` | **0.5.1.** A live workload secret exercises its human delegation; a child task reserves parent capacity (`S3-DELEGATION`, `S6B-DELEGATION`, `S6B-RUN-ISOLATION`). Missing or revoked secrets deny (`S2-CREDENTIAL`). |
-| `eastwind showcase authority` | **0.5.1.** Human grants support an attenuated task (`S3-HUMAN-ENTITLEMENT`, `S3-DELEGATION`). Widening to execute is refused (`S3-ATTENUATION`); revoking delegation stops the next call. |
-| `eastwind showcase blastradius` | **0.5.1.** One read consumes the daily action allowance; another run cannot bypass it (`S4-DAILY-ACTIONS`). An unlisted product denies (`S4-PRODUCTS`). `max_daily_transactions=0` independently bars execute (`S4-DAILY-TRANSACTIONS`); this L0 agent also lacks execution authority. |
-| `eastwind showcase anomaly` | **0.5.1.** A valid read allows. Three unlisted-tool probes trigger containment (`S6-PRIVILEGE-PROBING`), engage the kill switch, revoke credentials and record the owner alert. Later calls deny (`KILL_SWITCH`, `S6-QUARANTINE`, `S2-CREDENTIAL`). |
-| `eastwind showcase taint` | **0.5.1.** A client-data read taints the run (`S5-TAINT`). Public content is denied even after removing client references or rotating the run (`S5-PUBLIC-CONTENT`, `S6B-RUN-ISOLATION`). |
-| `eastwind showcase triggers` | **0.5.1.** A configured trigger is forwarded and evidenced as `SYSTEM`; an unlisted trigger is denied (`S2-SYSTEM-TRIGGER`). |
-| `eastwind showcase providerkey` | **0.5.1.** A real serve process supplies its configured provider key to the local stand-in on the four inference paths. Caller credentials deny without forwarding or retaining their values (`S2-PROVIDER-KEY`). An unsupported endpoint and opaque attachment deny (`S5-MODEL-ENDPOINT`, `S5-UNSUPPORTED-CONTENT`); response fields are minimized (`S4-FIELDS`). |
-| `eastwind showcase proposal` | **0.5.1.** `propose_document` leaves the target unchanged. Pending approval refuses apply (`PROPOSAL-APPROVAL`); a distinct human approves the exact diff and `apply_proposal_tool` applies it once (`PROPOSAL-HUMAN`, `PROPOSAL-BINDING`). Repeated apply denies. |
-| `eastwind showcase recovery` | **0.5.1.** Three governed reversible local operations allow. `recover_run` compensates latest first; a failed compensation keeps the run paused and new work denied (`PAUSE`, `S6C-RECOVER`). Retry completes only the unfinished compensation and marks recovery complete. |
-
-
-The gateway beat uses `upstream.eastwind.example` resolving to `127.0.0.1`, so the origin looks remote while the bytes stay on this machine. It appends that hosts line when permitted. The serve store contains the approved agent and use-case register; domain policy rows belong to the pack-aware library and MCP scenarios. The SDK suppresses its default Authorization header with `Omit()`, supplies a workload credential and delegation, and binds sensitive calls to a persisted run. The stand-in returns an extra provider field that the gateway withholds through the purpose field allow-list.
-
-For 0.5.1, agents declare deployment date, model, principal, reviewed deployment behavior, permitted systems and tools. The host issues workload credentials and human grants, then attenuates them into task delegations. Secrets stay out of evidence and checkpoints. Pure decisions and replay receive the effective use-case register; historical and conformance scenarios seed it at their observation time. Rejected and approved examples use distinct request arguments because approvals are exact and single-use. Framework bindings carry the same credentials and delegation IDs.
-
-The existing tool callbacks read or generate results; they do not send client messages or execute transactions. The proposal scenario separately applies a reviewed document change. MCP HTTP tools declared `draft`, `queue`, `send` or `execute` must declare `reversible: true` and a named compensation tool; closing the HTTP socket does not confirm backend cancellation. Tier 2+ execution belongs at gateway/MCP ingress (`S2-DEPLOYMENT-MODE`); the library examples use the registered tier 1 use case. Typed classification is a floor, and opaque file, image and audio attachments are refused before forwarding.
-
-The `providerkey` scenario runs `kognita serve` with `KOGNITA_PROVIDER_KEY`; `--provider-key` is the equivalent gateway configuration. Caller `authorization`, `x-api-key`, `api-key` and `x-goog-api-key` provider credentials are refused under `S2-PROVIDER-KEY`. Supported inference paths are exactly `/v1/chat/completions`, `/v1/completions`, `/v1/responses` and `/v1/embeddings`. Responses expose only explicitly allowed fields. The egress scenario opts into `EgressPolicy(trust_local=True)` for its trusted local example. The optional direct tier 1 OpenAI callable remains `eastwind run allow` when `OPENAI_API_KEY` is set.
-
+Kognita also provides claim-release verification, stale-fact and definition controls, memory and learning governance, fairness and evaluation gates, reasoning-trace controls, signed evidence and key management, external anchors and review, recovery bundles, dependency and concentration reports, provider failover, incident reporting, and runtime-assurance attestations. Eastwind does not provide dedicated scenarios or admin controls for these capabilities; consult Kognita's documentation before using them.
 
 ## Tests
 
-Offline tests cover `decide`, the dual-regime denial, the missing retrieval and model call, redaction with a fake completer, chain verification, tamper detection, the CLI, and every showcase scenario, including each 0.4 and 0.5 beat run twice in a row, field projection, attachment and endpoint refusal, credential secrecy, and classifier input hashes. The conformance kit’s human-approval case is bound to `draft_client_letter`, so that case runs here. The original ALLOW and DENY outcomes are unchanged. An absent purpose fails closed inside `eastwind showcase authorise`.
-
 ```bash
-uv run --no-sync pytest                 # live test skips without OPENAI_API_KEY
-uv run --no-sync pytest -m "not openai" -q
-uv run --no-sync pytest -m openai        # one real chat completion; needs the key
+uv run pytest -q -m "not openai and not live"
+EASTWIND_TEST_NPM=1 uv run pytest -q -m npm
 ```
 
-## Layout
+The offline suite never calls a real provider and skips the npm integration unless explicitly enabled. The npm test also skips when Node 22 or later or npx is unavailable. The live-provider test requires `EASTWIND_RUN_LIVE=1` and a configured gateway. CI installs Node 22 and exercises the independent verifier and edited-copy failure separately from the offline suite.
 
-```
-src/eastwind/pack.py           fictional clients, rules, knowledge
-src/eastwind/run.py            envelope → decide → retrieve → egress
-src/eastwind/showcase.py       one scenario per kognita 0.3 feature, and the tour order
-src/eastwind/showcase04.py     one scenario per kognita 0.4 feature
-src/eastwind/showcase05.py     ten kognita 0.5.1 scenarios
-src/eastwind/local_servers.py  local OpenAI and MCP stand-ins
-src/eastwind/openai_chat.py    chat completions callable used by the guard
-src/eastwind/cli.py            eastwind run | showcase | verify | export | doctor
-scripts/build_demo_page.py     static talk page from the offline commands
-scripts/vercel_build.sh        Vercel build: install, then build the page
-vercel.json                    static output in public/
-tests/                         offline governance and showcase, plus an optional live call
-```
+The static page builder and Vercel configuration remain in `scripts/build_demo_page.py`, `scripts/vercel_build.sh`, and `vercel.json`.
 
 ## License
 
-MIT. Kognita is MIT as well: <https://github.com/mze3e/kognita>.
+Eastwind is MIT licensed; see `LICENSE`. The vendored PWM files carry the attribution and license described in `src/eastwind/pwm_data/README.md`.

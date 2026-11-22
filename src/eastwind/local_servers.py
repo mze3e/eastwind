@@ -61,7 +61,7 @@ class OpenAIStandIn(ThreadingHTTPServer):
 
 
 class _OpenAIHandler(_Quiet):
-    def do_POST(self) -> None:  # noqa: N802 — stdlib name
+    def do_POST(self) -> None:  # noqa: N802 - stdlib name
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length) if length else b""
         server: OpenAIStandIn = self.server  # type: ignore[assignment]
@@ -124,7 +124,7 @@ class McpStandIn(ThreadingHTTPServer):
 
 
 class _McpHandler(_Quiet):
-    def do_POST(self) -> None:  # noqa: N802 — stdlib name
+    def do_POST(self) -> None:  # noqa: N802 - stdlib name
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length) if length else b""
         try:

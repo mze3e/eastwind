@@ -1,4 +1,4 @@
-"""Live OpenAI call. Skipped unless OPENAI_API_KEY is set."""
+"""Optional gateway-backed live call, disabled unless explicitly enabled."""
 
 from __future__ import annotations
 
@@ -12,13 +12,26 @@ from eastwind.openai_chat import OpenAIChat
 from eastwind.pack import CLIENTS
 from eastwind.run import run_scenario
 
-pytestmark = pytest.mark.openai
+pytestmark = [pytest.mark.openai, pytest.mark.live]
 
 
-@pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not set")
+@pytest.mark.skipif(os.environ.get("EASTWIND_RUN_LIVE") != "1", reason="live tests are disabled")
 def test_allow_makes_a_governed_openai_call():
     key = os.environ["OPENAI_API_KEY"]
-    chat = OpenAIChat(api_key=key, model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"))
+    from sqlmodel import Session
+    from kognita import Run
+    from kognita.models import RunRecord
+    from eastwind.pack import _headers
+
+    gateway_engine = make_engine(os.environ["EASTWIND_LLM_GATEWAY_DB"])
+    model = os.environ.get("EASTWIND_LLM_MODEL", "gpt-4o-mini")
+    with Session(gateway_engine) as session:
+        headers = _headers(session, model=model)
+        run = Run()
+        session.add(RunRecord(id=run.id))
+        headers["run_id"] = run.id
+        session.commit()
+    chat = OpenAIChat(api_key=key, model=model, headers=headers)
     engine = make_engine(":memory:")
     result = run_scenario(
         "allow",
