@@ -108,10 +108,10 @@ async function boot() {
   // ----------------------------------------------------------- layout
   // Wide windows put the caption beside the picture. Narrow ones put it in a sheet under the picture, and short
   // ones (a phone on its side) in a rail at the left. The engine frames the picture in whatever the caption
-  // leaves free, so it is told what is covered. Phones have no room for labels in the picture; see the CSS.
+  // leaves free, so it is told what is covered. Compact layouts list the labels as text instead; see the CSS.
   function applyShell() {
     const w = window.innerWidth, h = window.innerHeight, body = document.body;
-    const rail = h < 500, sheet = !rail && w < 980;
+    const rail = h < 600, sheet = !rail && w < 1100;
     const shell = rail ? 'rail' : sheet ? 'sheet' : 'side';
     body.dataset.shell = shell;
     body.dataset.size = w < 700 || rail ? 'phone' : sheet ? 'tablet' : 'desktop';
@@ -124,7 +124,7 @@ async function boot() {
     // The map is text over the whole screen, and a hidden caption (the preview renderer hides it) covers nothing.
     const covers = shell !== 'side' && body.dataset.layout !== 'map' && panel.height > 0;
     stage.setShell(shell, covers ? {
-      top: top + (body.dataset.size === 'tablet' ? 44 : 0),          // room for labels above the scene
+      top,
       bottom: rail ? foot : h - panel.top,
       left: rail ? panel.right : 0,
     } : {});

@@ -120,7 +120,9 @@ export class Labels {
       if (item.anchor.isObject3D) item.anchor.getWorldPosition(world); else world.copy(item.anchor);
       world.add(item.offset);
       world.project(this.camera);
-      const behind = world.z > 1 || world.z < -1;
+      // A label whose object has been taken out of the scene would otherwise sit at that object's last local position.
+      const gone = item.anchor.isObject3D && !item.anchor.isScene && !item.anchor.parent;
+      const behind = gone || world.z > 1 || world.z < -1;
       const x = (world.x * 0.5 + 0.5) * width;
       const y = (-world.y * 0.5 + 0.5) * height;
       const ready = performance.now() >= item.born;
@@ -143,7 +145,7 @@ export class Stage {
     this.shiftTarget = 0;
     this.speed = 1;   // a test hook: automated checks run the choreography faster
     this.wide = false;
-    this.shell = 'side';       // 'side': caption panel at the left. 'sheet': under the picture. 'rail': a left rail on short windows.
+    this.shell = 'side';       // 'side': caption panel at the left. 'sheet': under the picture. 'rail': a left rail on short windows. app.js decides.
     this.insetTop = 0; this.insetBottom = 0; this.insetLeft = 0; this.shiftY = 0;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0b1626);
@@ -197,7 +199,7 @@ export class Stage {
     this.camera.aspect = w / h;
     // Keep the subject clear of the caption panel on wide screens, or above the sheet on small ones.
     const compact = this.shell !== 'side';
-    this.shiftDefault = compact ? this.insetLeft / 2 : w >= 980 ? Math.min(240, w * 0.17) : 0;
+    this.shiftDefault = compact ? this.insetLeft / 2 : Math.min(240, w * 0.17);
     this.shiftTarget = this.wide && !compact ? 0 : this.shiftDefault;
     this.shiftX = this.shiftTarget;
     this.shiftY = compact ? (this.insetTop - this.insetBottom) / 2 : 0;   // the picture moves down by this
@@ -215,7 +217,7 @@ export class Stage {
     const p = new THREE.Vector3(...cam.pos), l = new THREE.Vector3(...cam.look);
     const dir = p.clone().sub(l); const d0 = dir.length(); dir.normalize();
     const compact = this.shell !== 'side';
-    const side = !compact && !this.wide && this.width >= 980;
+    const side = !compact && !this.wide;
     const freeLeft = side ? Math.min(460, this.width * 0.38) + 40 : this.insetLeft;
     const free = Math.max(0.2, (this.width - freeLeft) / this.width);
     const freeHeight = compact ? Math.max(0.2, (this.height - this.insetTop - this.insetBottom) / this.height) : 1;

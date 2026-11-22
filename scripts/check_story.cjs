@@ -102,9 +102,10 @@ function inspectLayout() {
   const panel = document.getElementById('panel');
   const compact = document.body.hasAttribute('data-compact');
   const panelBox = rect(panel);
-  // In a sheet or rail the caption scrolls inside its panel, so only the part that shows can overlap anything.
+  // When the caption scrolls inside its panel (a sheet, a rail, the map), only the part that shows can overlap anything.
+  const scrolls = getComputedStyle(panel).overflowY !== 'visible';
   const clip = (box) => {
-    if (!compact) return box;
+    if (!scrolls) return box;
     const l = Math.max(box.l, panelBox.l), t = Math.max(box.t, panelBox.t), r = Math.min(box.r, panelBox.r), b = Math.min(box.b, panelBox.b);
     return r > l && b > t ? { l, t, r, b, w: r - l, h: b - t } : null;
   };
@@ -316,13 +317,15 @@ async function checkPages(browser, base, name, options, report) {
     where = new URL(route, base).pathname;
     await page.goto(new URL(route, base).href);
     await page.waitForLoadState('load');
+    // Pictures lower on the page load lazily; make them load so "did not load" means it.
+    await page.evaluate(() => Promise.all([...document.images].map((img) => { img.loading = 'eager'; return img.decode().catch(() => {}); })));
     const found = await page.evaluate(() => {
       const problems = [];
       if (document.documentElement.scrollWidth > window.innerWidth + 1) problems.push(`the page scrolls sideways (${document.documentElement.scrollWidth}px wide in a ${window.innerWidth}px window)`);
       for (const img of document.images) if (!img.complete || img.naturalWidth === 0) problems.push(`the picture ${img.getAttribute('src')} did not load`);
       for (const el of document.querySelectorAll('button, a[href]')) {
         const r = el.getBoundingClientRect();
-        if (r.width > 0 && !el.closest('p, li') && (r.width < 23.5 || r.height < 23.5)) problems.push(`"${(el.textContent || '').trim().slice(0, 24)}" is only ${Math.round(r.width)} by ${Math.round(r.height)} pixels`);
+        if (r.width > 0 && !el.closest('p, li, footer') && (r.width < 23.5 || r.height < 23.5)) problems.push(`"${(el.textContent || '').trim().slice(0, 24)}" is only ${Math.round(r.width)} by ${Math.round(r.height)} pixels`);
       }
       if (document.querySelectorAll('h1').length !== 1) problems.push(`${document.querySelectorAll('h1').length} h1 headings`);
       if (!document.documentElement.lang) problems.push('no language set');

@@ -122,14 +122,14 @@ def test_every_small_screen_rule_hangs_off_the_attributes_the_script_sets():
     for attribute in ('data-shell="sheet"', 'data-shell="rail"', "data-compact", 'data-size="phone"', 'data-size="tablet"'):
         assert attribute in css, attribute
     # The thresholds live in one place in the script; the CSS comment says what they are.
-    assert "const rail = h < 500, sheet = !rail && w < 980;" in app
+    assert "const rail = h < 600, sheet = !rail && w < 1100;" in app
     assert "w < 700 || rail ? 'phone'" in app
-    assert 'under 980px wide' in css and 'under 500px high' in css and '700px' in css
+    assert 'under 1100px wide' in css and 'under 600px high' in css and '700px' in css
 
 
-def test_a_phone_lists_what_the_picture_shows_instead_of_floating_labels():
+def test_small_layouts_list_what_the_picture_shows_instead_of_floating_labels():
     css = read("story.css")
-    assert re.search(r'body\[data-size="phone"\] #labels \{ display: none; \}', css)
+    assert re.search(r'body\[data-compact\] #labels \{ display: none; \}', css)
     assert 'content: "What the picture shows"' in css
     # The list is built from the same labels, so nothing exists only as a drawing.
     assert "taglog" in read("app.js") and "tag(html, anchor, opts)" in read("app.js")

@@ -88,7 +88,7 @@ export function buildColleague(ctx) {
     async enter(id, step, s) {
       reset();
       if (id === 'colleague-hire') {
-        const anchors = [[-3.6, 5.1], [-4.1, 3.6], [-3.6, 2.1], [3.6, 5.1], [4.1, 3.6], [3.6, 2.1]];
+        const anchors = [[-3.4, 5.3], [-3.9, 3.9], [-3.4, 2.5], [3.4, 5.3], [3.9, 3.9], [3.4, 2.5]];
         step.callouts.forEach(([k, v], i) => {
           const [ax, ay] = anchors[i];
           leaders.add(link([ax < 0 ? -0.5 : 0.5, 1.9, 0], [ax, ay, 0], C.gold, 0.45));
@@ -107,9 +107,10 @@ export function buildColleague(ctx) {
           if (edge) edge.visible = true;
           s.scale(mesh, 1, 0.5, ease.back).catch(() => {});
           // Labels sit outside their node, away from the hub, so a dense graph stays readable.
-          const dx = n.pos.x, dy = n.pos.y, horizontal = Math.abs(dx) > Math.abs(dy) * 0.9;
-          const align = n.ring === 0 ? 'top' : horizontal ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'top' : 'bottom');
-          const off = n.ring === 0 ? [0, 0.7, 0] : horizontal ? [Math.sign(dx) * 0.5, 0, 0] : [0, Math.sign(dy) * 0.5, 0];
+          // The outer ring reads sideways; the inner ring reads above or below, so neighbours on the same line never collide.
+          const dx = n.pos.x, dy = n.pos.y, horizontal = n.ring === 2 && Math.abs(dx) > Math.abs(dy) * 0.9;
+          const align = n.ring === 0 ? 'top' : horizontal ? (dx > 0 ? 'right' : 'left') : (dy >= 0 ? 'top' : 'bottom');
+          const off = n.ring === 0 ? [0, 0.7, 0] : horizontal ? [Math.sign(dx) * 0.5, 0, 0] : [0, dy >= 0 ? 0.5 : -0.5, 0];
           ctx.tag(`${n.label}${n.count > 1 ? ` <b>${n.count}</b>` : ''}`, mesh, { offset: off, align, tone: n.ring === 0 ? 'gold' : '', delay: 0 });
           await s.wait(0.16);
         }

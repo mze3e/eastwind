@@ -21,6 +21,7 @@ export function buildBreak(ctx) {
   const group = new THREE.Group(); group.position.x = x0; stage.scene.add(group);
   const temp = new THREE.Group(); group.add(temp);
   let tags = [];
+  let downTag = null;   // the 'record keeper down' label, replaced once the keeper is back
   const say = (html, anchor, opts) => { const t = ctx.tag(html, anchor, opts); tags.push(t); return t; };
   const at = (x, y, z = 0) => new THREE.Vector3(x0 + x, y, z);
   const clearTemp = () => { for (const c of temp.children.slice()) temp.remove(c); };
@@ -83,7 +84,7 @@ export function buildBreak(ctx) {
     for (let i = 0; i < 4; i++) { power(i % 2 ? 1 : 0.3, i % 2 ? C.good : C.amber); await s.wait(0.09); }
     power(0);
     shards(s, temp, new THREE.Vector3(GATE_AT.x + 3.4, 0.4, 0.2), C.bad, 22, 1.6);
-    say('<b>Record keeper down</b><small>decisions cannot be written</small>', at(RACK_AT.x, 7.2), { tone: 'bad', cls: 'big', delay: 0.1 });
+    downTag = say('<b>Record keeper down</b><small>decisions cannot be written</small>', at(RACK_AT.x, 7.2), { tone: 'bad', cls: 'big', delay: 0.1 });
     counters(0);
     await s.wait(0.5);
   }
@@ -147,6 +148,7 @@ export function buildBreak(ctx) {
       const memo = packet(C.blue, 0.2); memo.position.set(GATE_AT.x, 1.6, 0.4); temp.add(memo);
       await s.glide(memo, [RACK_AT.x - 1.4, 1.8, 0.6], 1.1, 0.5); temp.remove(memo);
       ctx.setCounters([{ label: 'Record keeper', value: 'Back' }, { label: 'Passed on', value: out.local.passed_on }]);
+      if (downTag) ctx.labels.remove(downTag);
       say(`<b>Recorded afterwards</b><small>${out.chain_ok ? 'the record still checks out' : 'check the record'}</small>`, at(RACK_AT.x, 7.2), { tone: 'good', cls: 'big', delay: 0.2 });
       return;
     }

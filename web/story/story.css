@@ -161,10 +161,10 @@ body[data-layout="wide"] .counters, body[data-layout="map"] .counters { left: 1.
 .nogl[hidden] { display: none; }
 
 /* ------------------------------------------- small screens: the caption leaves the side of the picture
-   app.js sets body[data-shell]: "side" on wide windows, "sheet" (a panel under the picture) under 980px wide,
-   "rail" (a panel at the left) under 500px high. Both of the last two are [data-compact]. body[data-size] is
-   "phone" under 700px wide or 500px high, "tablet" in between and "desktop" otherwise. The picture is framed
-   in the space the caption leaves free. */
+   app.js sets body[data-shell]: "side" on wide windows, "sheet" (a panel under the picture) under 1100px wide,
+   "rail" (a panel at the left) under 600px high. Both of the last two are [data-compact]. body[data-size] is
+   "phone" under 700px wide or 600px high, "tablet" in between and "desktop" otherwise. The picture is framed
+   in the space the caption leaves free. Labels in the picture are shown only in the wide layout. */
 body[data-compact] .top { padding: .5rem .8rem; gap: .6rem; }
 body[data-compact] #chapters { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-inline: .7rem;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 .7rem, #000 calc(100% - .7rem), transparent); mask-image: linear-gradient(90deg, transparent, #000 .7rem, #000 calc(100% - .7rem), transparent); }
@@ -204,16 +204,16 @@ body[data-compact] .honest { font-size: .7rem; }
 body[data-shell="sheet"] .drawer { left: .6rem; right: .6rem; top: auto; width: auto; bottom: calc(var(--foot, 5.5rem) + .6rem); max-height: 50vh; max-height: 50dvh; }
 body[data-shell="rail"] .drawer { left: auto; right: .6rem; top: calc(var(--top, 3rem) + .4rem); width: min(46vw, 26rem); max-height: calc(100vh - var(--top, 3rem) - var(--foot, 5.5rem) - 1rem); }
 
-/* A phone has no room for labels floating in the picture, so what they say is listed in the caption instead. */
-body[data-size="phone"] #labels { display: none; }
+/* Labels float in the picture only when the window is wide enough to leave them room. In a sheet or a rail what they say is listed in the caption instead. */
+body[data-compact] #labels { display: none; }
 body[data-size="phone"] .brand { font-size: 0; gap: 0; } body[data-size="phone"] .brand .mark { width: 1.25rem; height: 1.25rem; }
 body[data-size="phone"] .foot { grid-template-columns: auto 1fr; }
 body[data-size="phone"] .honest .more { display: none; }
-body[data-size="phone"] .taglog { position: static; width: auto; height: auto; margin: .9rem 0 0; padding: .6rem .8rem .6rem 1.6rem; overflow: visible; clip: auto; white-space: normal;
+body[data-compact] .taglog { position: static; width: auto; height: auto; margin: .9rem 0 0; padding: .6rem .8rem .6rem 1.6rem; overflow: visible; clip: auto; white-space: normal;
   border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .04); font-size: .9rem; color: #cfdbea; }
-body[data-size="phone"] .taglog::before { content: "What the picture shows"; display: block; margin: 0 0 .3rem -.8rem; font: 700 .72rem var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
-body[data-size="phone"] .taglog li { margin: .15rem 0; }
-body[data-size="phone"] .taglog:empty { display: none; }
+body[data-compact] .taglog::before { content: "What the picture shows"; display: block; margin: 0 0 .3rem -.8rem; font: 700 .72rem var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+body[data-compact] .taglog li { margin: .15rem 0; }
+body[data-compact] .taglog:empty { display: none; }
 body[data-size="phone"] .tiles { grid-template-columns: 1fr; }
 body[data-size="phone"] .mapbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 body[data-size="phone"] .mapbar button { flex: none; min-height: 36px; }
