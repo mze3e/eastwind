@@ -134,7 +134,9 @@ def _require(transcript: str, needle: str, label: str) -> None:
 def capture_demo() -> DemoTranscripts:
     """Run the three projector commands on a temporary store."""
     saved_key = os.environ.get("OPENAI_API_KEY")
+    saved_provider = os.environ.get("EASTWIND_LLM_PROVIDER")
     os.environ["OPENAI_API_KEY"] = ""
+    os.environ["EASTWIND_LLM_PROVIDER"] = "mock"
     original_call = OpenAIChat.__call__
     OpenAIChat.__call__ = _refuse_live_model  # type: ignore[method-assign]
     try:
@@ -149,6 +151,10 @@ def capture_demo() -> DemoTranscripts:
             os.environ.pop("OPENAI_API_KEY", None)
         else:
             os.environ["OPENAI_API_KEY"] = saved_key
+        if saved_provider is None:
+            os.environ.pop("EASTWIND_LLM_PROVIDER", None)
+        else:
+            os.environ["EASTWIND_LLM_PROVIDER"] = saved_provider
 
     deny = transcripts["deny"]
     allow = transcripts["allow"]
@@ -492,6 +498,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
         <a href="#deny">DENY</a>
         <a href="#allow">ALLOW</a>
         <a href="#verify">Verify</a>
+        <a href="/admin/">Open admin demo</a>
       </nav>
     </header>
 

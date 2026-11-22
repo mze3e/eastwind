@@ -16,6 +16,14 @@ Open `http://127.0.0.1:8090`. Set `EASTWIND_ADMIN_TOKEN` to choose an action tok
 
 For the longer command-line showcase, run `uv run eastwind showcase all --db /tmp/eastwind-showcase`. Its gateway and MCP demonstrations use local stand-ins. The optional ingestion and framework-adapter examples report a skip when their extras are absent. The existing static page can be rebuilt with `uv run python scripts/build_demo_page.py`.
 
+## Vercel public demo
+
+The Git-connected Vercel configuration builds the static talk page at `/` and routes `/admin/` to `api/index.py`, a Python 3.12 FastAPI function. The configuration sets `EASTWIND_PUBLIC_DEMO=1`; no provider key or admin token is needed. The function always uses the in-process mock and rejects real-provider requests. It does not start `kognita serve` or contact an external service. The MCP and degraded gateway drills need the local CLI and are disabled in the public UI.
+
+Each function instance seeds synthetic records under `/tmp`. State is shared by visitors on that instance, can disappear on restart, and is not synchronized across instances. A later request may reach a different instance, so an approval can disappear between requests. Never enter real client data. The public evidence page verifies the Python chain and shows the npm command for local verification; it does not run npm in the function. The normal `eastwind admin` command remains token-protected and local-only.
+
+Dependencies come from `pyproject.toml` and `uv.lock`; optional development and provider extras are excluded from the function. Vercel's [Python runtime documentation](https://vercel.com/docs/functions/runtimes/python) describes the ASGI entrypoint and its 500 MB uncompressed bundle limit. The static page retains its restrictive content policy; the admin permits same-origin forms.
+
 ## Guided tour
 
 To see how the agent uses permitted context, acts within its mandate, and leaves a verifiable record, go to **Admin > Tour: Permitted context, mandated action, provable record**:
