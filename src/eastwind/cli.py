@@ -165,6 +165,8 @@ def _completer_for(call_model: bool) -> tuple[OpenAIChat | None, bool]:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    if args.llm and args.llm != "mock":
+        raise ValueError("This legacy scenario does not support gateway identity binding; use the offline mock")
     db = _db_path(args.db)
     if args.fresh:
         _reset_store(db)
@@ -274,12 +276,27 @@ def cmd_showcase(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mock_serve(args: argparse.Namespace) -> int:
+    from eastwind.llm.server import serve
+
+    print(f"Mock LLM listening on http://{args.host}:{args.port}", flush=True)
+    serve(args.host, args.port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eastwind",
         description="Eastwind Private eligibility decisions, before retrieval or a model call.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    mock = sub.add_parser("mock-llm", help="run the local deterministic model service")
+    mock_sub = mock.add_subparsers(dest="mock_command", required=True)
+    mock_serve = mock_sub.add_parser("serve")
+    mock_serve.add_argument("--host", default="127.0.0.1")
+    mock_serve.add_argument("--port", type=int, default=8091)
+    mock_serve.set_defaults(func=cmd_mock_serve)
 
     doctor = sub.add_parser("doctor", help="show kognita, the OpenAI SDK, and whether a key is set")
     doctor.set_defaults(func=cmd_doctor)
@@ -299,6 +316,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="on ALLOW, send the prompt through the guard to a local echo instead of OpenAI",
     )
+    run.add_argument("--llm", choices=["mock", "openai", "anthropic", "xai", "ollama", "openai-compatible"])
     run.set_defaults(func=cmd_run)
 
     verify = sub.add_parser("verify", help="verify the evidence chain, or an exported file")
