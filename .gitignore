@@ -17,3 +17,4 @@ public/
 *.db-shm
 audit.json
 agent-tools/
+web/story/data.json

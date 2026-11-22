@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Eastwind (Python >= 3.12, uv.lock) and build the static talk page.
+# Install Eastwind (Python >= 3.12, uv.lock) and build the static site: the talk page and the 3D walkthrough.
 # The page builder clears OPENAI_API_KEY and uses the offline echo model only.
 set -euo pipefail
 
@@ -38,3 +38,6 @@ else
 fi
 
 test -s public/index.html
+test -s public/story/index.html
+test -s public/story/data.json
+test -s public/vendor/three/three.module.js

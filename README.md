@@ -14,15 +14,45 @@ uv run eastwind admin
 
 Open `http://127.0.0.1:8090`. Set `EASTWIND_ADMIN_TOKEN` to choose an action token, or use the one printed at startup. Each action form asks for the token. Pages are readable without a token on the local host, so use synthetic data on a trusted machine. The server accepts loopback bindings only. Its persistent stores default to `.eastwind/admin`; use `--db DIR` to change them.
 
-For the longer command-line showcase, run `uv run eastwind showcase all --db /tmp/eastwind-showcase`. Its gateway and MCP demonstrations use local stand-ins. The optional ingestion and framework-adapter examples report a skip when their extras are absent. The existing static page can be rebuilt with `uv run python scripts/build_demo_page.py`.
+For the longer command-line showcase, run `uv run eastwind showcase all --db /tmp/eastwind-showcase`. Its gateway and MCP demonstrations use local stand-ins. The optional ingestion and framework-adapter examples report a skip when their extras are absent. The static site, the talk page and the 3D walkthrough below, is rebuilt with `uv run python scripts/build_demo_page.py`.
+
+## Walkthrough for executives
+
+A guided 3D story for an audience that does not read policy engines. One AI colleague at a fictional private bank: **Know** what it may see, **Do** what it may do, **Prove** what the bank can show afterwards. You drive it.
+
+```bash
+uv run python scripts/build_demo_page.py --serve    # builds public/ and serves it on 127.0.0.1:8000
+```
+
+Open `http://127.0.0.1:8000/` for the talk page, or go straight to `/story/`. Use a modern browser with WebGL. Without WebGL the story still runs as text and the pictures are off.
+
+| Key | Does |
+|---|---|
+| `←` `→` or `Space` | Previous and next step |
+| `1` `2` `3` | Pick the choice shown at the bottom (who is asking, approve or deny, hit the stop, edit an entry) |
+| `N` | Talk track for the step, in plain words |
+| `M` | Show the mechanics: the command to reproduce the step and the rule codes behind it |
+| `F` | Full screen |
+| `#know-border` etc. | Any step can be opened directly by its id, and the address bar follows you |
+
+Sixteen steps: a welcome; meet the colleague and its PWM passport; Know (who is asking, the wrong desk, approved sources, names that never leave the bank); Do (authority is not access, a person approves, the emergency stop wins, a budget of calls); Prove (a sealed record, checking the seals, an edited entry caught, a report that lists its gaps); and a recap.
+
+How it stays honest:
+
+- **The decisions are real.** `src/eastwind/story.py` runs the governed scenarios and workflows on one synthetic store, once for every branch you can choose, and writes `story/data.json`. If a claim the story would make is not true of the run, the build fails. The walkthrough replays that recording, so it needs no application server, no key and no model call in the room.
+- **The model is a stand-in.** Nothing contacts a provider. The footer of every step says so.
+- **The words are tested.** All on-screen copy is written in `story.py`, not in JavaScript, so `tests/test_story.py` can check it: no jargon on a primary screen (the codes live behind `M`), numbers match the data, and nothing about a client who was never retrieved or a document that was withheld is shipped.
+- **Edits are described exactly.** The tamper step shows that an edited entry is detected and where. It does not claim that a fully rewritten record would be: that needs a checkpoint published outside the system, as the Evidence section notes.
+
+The pictures are drawn with [three.js](https://threejs.org) 0.187.0, vendored unmodified in `web/vendor/three` with its checksums, so it runs from one origin with no CDN. `/story/` is served with a content policy that permits only same-origin scripts; the talk page at `/` still runs none. `--serve` applies the same headers as `vercel.json`, so what you present locally is what is deployed. The stills on the talk page come from the real scenes: refresh them with `node scripts/render_previews.cjs` (needs Playwright and Chromium) and commit `web/story/previews`.
 
 ## Vercel public demo
 
-The Git-connected Vercel configuration builds the static talk page at `/` and routes `/admin/` to `api/index.py`, a Python 3.12 FastAPI function. The configuration sets `EASTWIND_PUBLIC_DEMO=1`; no provider key or admin token is needed. The function always uses the in-process mock and rejects real-provider requests. It does not start `kognita serve` or contact an external service. The MCP and degraded gateway drills need the local CLI and are disabled in the public UI.
+The Git-connected Vercel configuration builds the static talk page at `/` and the 3D walkthrough at `/story/`, and routes `/admin/` to `api/index.py`, a Python 3.12 FastAPI function. The configuration sets `EASTWIND_PUBLIC_DEMO=1`; no provider key or admin token is needed. The function always uses the in-process mock and rejects real-provider requests. It does not start `kognita serve` or contact an external service. The MCP and degraded gateway drills need the local CLI and are disabled in the public UI.
 
 Each function instance seeds synthetic records under `/tmp`. State is shared by visitors on that instance, can disappear on restart, and is not synchronized across instances. A later request may reach a different instance, so an approval can disappear between requests. Never enter real client data. The public evidence page verifies the Python chain and shows the npm command for local verification; it does not run npm in the function. The normal `eastwind admin` command remains token-protected and local-only.
 
-Dependencies come from `pyproject.toml` and `uv.lock`; optional development and provider extras are excluded from the function. Vercel's [Python runtime documentation](https://vercel.com/docs/functions/runtimes/python) describes the ASGI entrypoint and its 500 MB uncompressed bundle limit. The static page retains its restrictive content policy; the admin permits same-origin forms.
+Dependencies come from `pyproject.toml` and `uv.lock`; optional development and provider extras are excluded from the function. Vercel's [Python runtime documentation](https://vercel.com/docs/functions/runtimes/python) describes the ASGI entrypoint and its 500 MB uncompressed bundle limit. The talk page keeps a restrictive content policy that runs no script (it adds only its own preview images); the walkthrough permits same-origin scripts and nothing else; the admin permits same-origin forms.
 
 ## Guided tour
 
@@ -129,7 +159,7 @@ EASTWIND_TEST_NPM=1 uv run pytest -q -m npm
 
 The offline suite never calls a real provider and skips the npm integration unless explicitly enabled. The npm test also skips when Node 22 or later or npx is unavailable. The live-provider test requires `EASTWIND_RUN_LIVE=1` and a configured gateway. CI installs Node 22 and exercises the independent verifier and edited-copy failure separately from the offline suite.
 
-The static page builder and Vercel configuration remain in `scripts/build_demo_page.py`, `scripts/vercel_build.sh`, and `vercel.json`.
+The site builder and Vercel configuration remain in `scripts/build_demo_page.py`, `scripts/vercel_build.sh`, and `vercel.json`. `tests/test_story.py` covers the walkthrough: its data, its copy, the vendored three.js, the built site, and the page policy.
 
 ## License
 
