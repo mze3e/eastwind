@@ -4,6 +4,7 @@
 //   node scripts/check_story.cjs                        # build the site, serve it, check laptop, tablet and phone
 //   node scripts/check_story.cjs --all                  # every size listed below
 //   node scripts/check_story.cjs --sizes phone,laptop --steps know-border,do-stop
+//   node scripts/check_story.cjs --sizes 1366x650        # any WIDTHxHEIGHT
 //   node scripts/check_story.cjs --base http://127.0.0.1:8301/story/   # use a server that is already running
 //
 // A "state" is a step as it arrives, and then the step after each of its choices. For each state the script waits
@@ -41,6 +42,8 @@ const SIZES = {
   'tablet-wide': [1024, 768], tablet: [768, 1024], phone: [390, 844], 'phone-landscape': [844, 390],
 };
 const TOUCH = new Set(['tablet-wide', 'tablet', 'phone', 'phone-landscape']);
+/** A named size, or any WIDTHxHEIGHT such as 1366x650 (a 1366 by 768 laptop's browser area). */
+const dimensions = (name) => SIZES[name] || (/^\d+x\d+$/.test(name) ? name.split('x').map(Number) : null);
 const QUICK = ['laptop', 'tablet', 'phone'];
 
 function parse(argv) {
@@ -55,7 +58,7 @@ function parse(argv) {
     else if (a === '--speed') options.speed = Number(value());
     else { console.error(`unknown option ${a}`); process.exit(2); }
   }
-  for (const size of options.sizes) if (!SIZES[size]) { console.error(`unknown size ${size}; choose from ${Object.keys(SIZES).join(', ')}`); process.exit(2); }
+  for (const size of options.sizes) if (!dimensions(size)) { console.error(`unknown size ${size}; choose from ${Object.keys(SIZES).join(', ')} or give WIDTHxHEIGHT`); process.exit(2); }
   return options;
 }
 
@@ -223,7 +226,7 @@ async function settle(page) {
 }
 
 async function checkSize(browser, base, name, options, report) {
-  const [width, height] = SIZES[name];
+  const [width, height] = dimensions(name);
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, isMobile: TOUCH.has(name), hasTouch: TOUCH.has(name) });
   const page = await context.newPage();
   let where = 'loading';
@@ -303,7 +306,7 @@ async function checkSize(browser, base, name, options, report) {
 
 /** The two static pages that sit beside the walkthrough: the talk page and the one-pager. */
 async function checkPages(browser, base, name, options, report) {
-  const [width, height] = SIZES[name];
+  const [width, height] = dimensions(name);
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, isMobile: TOUCH.has(name), hasTouch: TOUCH.has(name) });
   const page = await context.newPage();
   let where = '';
@@ -364,7 +367,7 @@ async function contactSheet(browser, folder, name, shots, width) {
   const started = Date.now();
   try {
     for (const name of options.sizes) {
-      const [w, h] = SIZES[name];
+      const [w, h] = dimensions(name);
       const before = report.length;
       const states = await checkSize(browser, base, name, options, report);
       await checkPages(browser, base, name, options, report);
