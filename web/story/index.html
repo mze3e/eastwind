@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>An AI colleague that can show its work - Eastwind Private</title>
+  <meta name="description" content="A guided 3D walkthrough of how an AI assistant is kept safe: what it may see, what it may do, and the proof it leaves behind. Fictional bank, synthetic data.">
+  <link rel="stylesheet" href="story.css">
+</head>
+<body>
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <div id="flash" aria-hidden="true"></div>
+
+  <header class="top">
+    <a class="brand" href="../" aria-label="Back to the Eastwind Private overview"><span class="mark"></span>Eastwind Private</a>
+    <nav id="chapters" aria-label="Chapters"></nav>
+    <div class="tools">
+      <button id="btn-notes" type="button" aria-pressed="false" title="Talk track for the presenter (N)">Notes</button>
+      <button id="btn-mech" type="button" aria-pressed="false" title="Technical detail behind this step (M)">Mechanics</button>
+      <button id="btn-full" type="button" title="Full screen (F)">Full screen</button>
+    </div>
+  </header>
+
+  <main class="panel" id="panel" aria-live="polite">
+    <p class="kicker" id="kicker"></p>
+    <h1 id="title"></h1>
+    <p class="point" id="point"></p>
+    <ul class="legend" id="legend"></ul>
+    <dl class="callouts" id="callouts"></dl>
+    <p class="result" id="result" hidden></p>
+  </main>
+
+  <aside class="drawer notes" id="notes" hidden aria-label="Presenter notes">
+    <h2>Talk track</h2>
+    <p id="notes-text"></p>
+    <p class="hint">Say it in your own words. Press N to hide.</p>
+  </aside>
+
+  <aside class="drawer mech" id="mech" hidden aria-label="Show the mechanics">
+    <h2>Show the mechanics</h2>
+    <p class="hint">What Kognita actually recorded for this step.</p>
+    <pre class="cmd" id="mech-cmd"></pre>
+    <table id="mech-facts"></table>
+  </aside>
+
+  <div class="choices" id="choices" role="group" aria-label="Choose what to try"></div>
+
+  <footer class="foot">
+    <div class="nav">
+      <button id="btn-back" type="button" aria-label="Previous step">&larr; Back</button>
+      <button id="btn-next" type="button" class="primary" aria-label="Next step">Next &rarr;</button>
+    </div>
+    <ol class="dots" id="dots" aria-label="Progress"></ol>
+    <p class="honest" id="honest"></p>
+  </footer>
+
+  <div class="nogl" id="nogl" hidden role="status">
+    <strong>3D view unavailable.</strong> This browser could not start WebGL, so the pictures are off. The story still works: use Next and Back.
+  </div>
+  <div class="loading" id="loading" role="status">Preparing the walkthrough…</div>
+
+  <noscript><div class="nogl">This walkthrough needs JavaScript. The <a href="../">overview page</a> has the same story as plain text.</div></noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

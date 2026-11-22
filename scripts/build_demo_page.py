@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
-"""Build the public demo page from the offline demo commands.
+"""Build the public Eastwind site: the demo page and the 3D walkthrough.
 
-The page is the stdout of these commands, in order, on one fresh store:
+The demo page shows the stdout of these commands, in order, on one fresh store:
 
     eastwind run deny --fresh
     eastwind run allow --echo-model
     eastwind verify
 
-OPENAI_API_KEY is cleared before those commands run. The live chat callable
+The walkthrough in web/story replays a real Kognita run captured by eastwind.story. Both are
+built offline. OPENAI_API_KEY is cleared before those commands run. The live chat callable
 is replaced with a refusal for the duration of the build, so this script
 cannot take the OpenAI path.
+
+    uv run python scripts/build_demo_page.py             # writes public/
+    uv run python scripts/build_demo_page.py --serve     # and serves it on 127.0.0.1:8000
 """
 
 from __future__ import annotations
 
 import argparse
 import html
+import json
 import os
 import re
+import shutil
 import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
@@ -34,6 +40,7 @@ from kognita import __version__ as kognita_version
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPO_ROOT / "public" / "index.html"
+WEB = REPO_ROOT / "web"
 
 _CHECK_LINE = re.compile(r"^  (PASS|FAIL|ESCALATE|HUMAN)\s+(\S+)\s+(.+?)\s*$")
 _DETAIL_LINE = re.compile(r"^ {18}(.*)$")
@@ -253,6 +260,30 @@ def _pre(text: str, css: str) -> str:
     return f"<pre class=\"{css}\">{_esc(text.rstrip())}</pre>"
 
 
+def _preview(name: str, alt: str) -> str:
+    """An <img> for a preview still, only if the still exists, so a fresh checkout never shows a broken image."""
+    if not (WEB / "story" / "previews" / f"{name}.jpg").is_file():
+        return ""
+    return (f'<img src="/story/previews/{name}.jpg" alt="{_esc(alt)}" width="1280" height="720" '
+            'loading="lazy" decoding="async">')
+
+
+_CARDS = (
+    ("know", "know-roles", "Know", "What may it see?",
+     "The AI sees only what the person asking is entitled to see. A request from the wrong desk is "
+     "refused before anything is read, and client names never leave the bank.",
+     "A Dubai request is blocked for four separate reasons, with nothing read and no AI call made."),
+    ("do", "do-approval", "Do", "What may it do?",
+     "The bank sets how independent the AI is. Big decisions wait for a named person, and an emergency "
+     "stop beats an approval that was already given.",
+     "An approved proposal is withheld at the release door when the stop is hit."),
+    ("prove", "prove-tamper", "Prove", "What can we show?",
+     "Every decision goes into a sealed record that anyone can check. Edit one entry and the break is "
+     "found. Gaps in the record are listed, not hidden.",
+     "One edited entry out of the whole record is caught, and the checker says exactly where."),
+)
+
+
 def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
     stamp = built_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     fail_closed = next(
@@ -260,224 +291,102 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
         "",
     )
     fail_closed_html = f"<p class=\"fail-closed\">{_esc(fail_closed)}</p>" if fail_closed else ""
+    hero_img = _preview("hero", "A friendly AI assistant with its job, manager and limits labelled around it")
+    cards = "".join(
+        f"""
+      <a class="card {key}" href="/story/#{step}">
+        <div class="shot">{_preview(key, alt)}</div>
+        <div class="body">
+          <p class="kick">{kicker}</p>
+          <h2>{question}</h2>
+          <p>{text}</p>
+          <span class="go">See it in 3D &rarr;</span>
+        </div>
+      </a>"""
+        for key, step, kicker, question, text, alt in _CARDS
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Governed Agents That Survive Audit - Eastwind Private</title>
-  <meta name="description" content="Eastwind Private: a governed-agents demo on kognita. Offline DENY, ALLOW echo, and evidence verify.">
+  <meta name="description" content="A guided 3D walkthrough of an AI assistant at a fictional private bank: what it may see, what it may do, and the proof it leaves behind. Eastwind Private: a governed-agents demo on kognita.">
   <style>
     :root {{
-      color-scheme: light;
-      --ink: #1c1915;
-      --muted: #514a40;
-      --paper: #f4f0e6;
-      --card: #fffdf8;
-      --line: #ddd4c4;
-      --deny: #7a221c;
-      --deny-bg: #f8e6e1;
-      --allow: #1a5340;
-      --allow-bg: #e3f2ea;
-      --verify: #1a3358;
-      --verify-bg: #e4ebf6;
-      --banner: #2a2118;
-      --banner-ink: #fff8ee;
+      color-scheme: dark;
+      --navy: #0b1626; --deep: #0f2036; --line: rgba(255,255,255,.11);
+      --ink: #eaf1f9; --muted: #a9bbcf; --gold: #e5b567;
+      --cyan: #4cc9f0; --amber: #ffb547; --blue: #7aa2ff; --good: #3ecf8e; --bad: #ff6b6b;
+      --serif: Georgia, "Iowan Old Style", Palatino, "Palatino Linotype", serif;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
     }}
     * {{ box-sizing: border-box; }}
-    html {{ font-size: 20px; }}
-    body {{
-      margin: 0;
-      background: var(--paper);
-      color: var(--ink);
-      font-family: Georgia, "Iowan Old Style", Palatino, "Palatino Linotype", serif;
-      line-height: 1.45;
-    }}
-    a {{ color: var(--verify); }}
-    .banner {{
-      background: var(--banner);
-      color: var(--banner-ink);
-      padding: 0.85rem 1.4rem;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      font-size: 1rem;
-      letter-spacing: 0.01em;
-    }}
-    .banner strong {{ font-weight: 700; }}
-    .wrap {{
-      max-width: 70rem;
-      margin: 0 auto;
-      padding: 1.6rem 1.4rem 3.5rem;
-    }}
-    header.hero h1 {{
-      font-size: 2.5rem;
-      line-height: 1.08;
-      margin: 0.25rem 0 0.6rem;
-      font-weight: 700;
-    }}
-    .eyebrow, .meta, nav, .command, .section-kicker, footer {{
-      font-family: "Segoe UI", system-ui, sans-serif;
-    }}
-    .eyebrow {{
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }}
-    .meta {{
-      margin: 0.2rem 0 0;
-      font-size: 1.15rem;
-    }}
-    .lede {{
-      font-size: 1.2rem;
-      max-width: 46rem;
-    }}
-    nav {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      margin: 1.2rem 0 0.4rem;
-    }}
-    nav a {{
-      text-decoration: none;
-      border: 2px solid var(--ink);
-      border-radius: 999px;
-      padding: 0.25rem 0.85rem;
-      color: var(--ink);
-      font-weight: 650;
-      background: var(--card);
-    }}
-    section {{
-      margin-top: 1.8rem;
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 0.7rem;
-      padding: 1.15rem 1.2rem 1.3rem;
-      scroll-margin-top: 0.8rem;
-    }}
-    section.deny {{ border-top: 8px solid var(--deny); }}
-    section.allow {{ border-top: 8px solid var(--allow); }}
-    section.verify {{ border-top: 8px solid var(--verify); }}
-    .section-kicker {{
-      margin: 0;
-      font-size: 0.85rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }}
-    h2 {{
-      margin: 0.15rem 0 0.35rem;
-      font-size: 2rem;
-      line-height: 1.1;
-    }}
-    .command {{
-      display: inline-block;
-      margin: 0.2rem 0 0.8rem;
-      padding: 0.25rem 0.55rem;
-      background: #241f1a;
-      color: #f6f1e7;
-      border-radius: 0.35rem;
-      font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
-      font-size: 0.95rem;
-    }}
-    .claim {{ margin-top: 0; font-size: 1.15rem; }}
-    .checks {{
-      list-style: none;
-      padding: 0;
-      margin: 0.8rem 0;
-    }}
-    .check {{
-      display: grid;
-      grid-template-columns: 6.2rem 11rem 1fr;
-      gap: 0.35rem 0.8rem;
-      align-items: baseline;
-      padding: 0.55rem 0;
-      border-top: 1px solid var(--line);
-      font-family: "Segoe UI", system-ui, sans-serif;
-    }}
-    .check .detail {{
-      grid-column: 2 / -1;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }}
-    .mark {{
-      font-weight: 750;
-      letter-spacing: 0.04em;
-      font-size: 0.95rem;
-    }}
-    .mark-fail {{ color: var(--deny); }}
-    .mark-pass {{ color: var(--allow); }}
-    .mark-escalate, .mark-human {{ color: #6a4a12; }}
-    .regime {{
-      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
-      font-weight: 700;
-    }}
-    .fail-closed {{
-      background: var(--deny-bg);
-      color: var(--deny);
-      padding: 0.7rem 0.85rem;
-      border-radius: 0.4rem;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      font-weight: 650;
-    }}
-    .pair {{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.9rem;
-    }}
-    .panel {{
-      border-radius: 0.45rem;
-      padding: 0.75rem 0.8rem 0.9rem;
-    }}
-    .panel h3 {{
-      margin: 0 0 0.45rem;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      font-size: 1rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }}
-    .panel.provider {{ background: var(--deny-bg); }}
-    .panel.provider h3 {{ color: var(--deny); }}
-    .panel.restored {{ background: var(--allow-bg); }}
-    .panel.restored h3 {{ color: var(--allow); }}
-    .verify-result {{
-      margin: 0.4rem 0 0.8rem;
-      font-size: 2rem;
-      line-height: 1.15;
-      color: var(--verify);
-    }}
-    pre {{
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
-      font-size: 0.92rem;
-      line-height: 1.4;
-    }}
-    .panel pre {{ background: transparent; color: var(--ink); padding: 0; }}
-    details {{ margin-top: 1rem; }}
-    summary {{
-      cursor: pointer;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      font-weight: 650;
-    }}
-    details pre {{
-      margin-top: 0.6rem;
-      background: #221e19;
-      color: #f6f1e7;
-      padding: 0.9rem 1rem;
-      border-radius: 0.4rem;
-    }}
-    footer {{
-      margin-top: 1.8rem;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }}
-    footer p {{ margin: 0.35rem 0; }}
-    @media (max-width: 800px) {{
-      html {{ font-size: 18px; }}
-      .check {{ grid-template-columns: 5.4rem 1fr; }}
-      .check .citation {{ grid-column: 1 / -1; }}
+    html {{ font-size: 18px; }}
+    body {{ margin: 0; background: radial-gradient(1200px 600px at 70% -10%, #17314f 0%, var(--navy) 60%); color: var(--ink); font-family: var(--sans); line-height: 1.55; }}
+    a {{ color: var(--cyan); }}
+    .banner {{ background: #05101d; border-bottom: 1px solid var(--line); color: var(--muted); padding: .7rem 1.4rem; font-size: .9rem; }}
+    .banner strong {{ color: var(--gold); }}
+    .wrap {{ max-width: 74rem; margin: 0 auto; padding: 2rem 1.4rem 3.5rem; }}
+    .hero {{ display: grid; grid-template-columns: 1.05fr 1fr; gap: 2.2rem; align-items: center; padding: 1.2rem 0 2.4rem; }}
+    .eyebrow {{ margin: 0; color: var(--gold); font-size: .85rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }}
+    h1 {{ font: 700 clamp(2.2rem, 4.6vw, 3.6rem)/1.05 var(--serif); margin: .5rem 0 .8rem; letter-spacing: -.015em; }}
+    .meta {{ margin: 0 0 1rem; color: var(--muted); font-size: .95rem; }}
+    .lede {{ font-size: 1.18rem; color: #d7e3f1; max-width: 34rem; margin: 0 0 1.4rem; }}
+    .cta {{ display: flex; flex-wrap: wrap; gap: .8rem; margin: 0 0 .9rem; }}
+    .btn {{ display: inline-block; padding: .85rem 1.4rem; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--ink); text-decoration: none; font-weight: 650; }}
+    .btn:hover {{ background: rgba(255,255,255,.12); }}
+    .btn.primary {{ background: var(--gold); border-color: var(--gold); color: #0b1626; font-weight: 800; font-size: 1.08rem; padding: .95rem 1.7rem; box-shadow: 0 10px 34px rgba(229,181,103,.28); }}
+    .btn.primary:hover {{ filter: brightness(1.08); background: var(--gold); }}
+    .keys {{ margin: 0; color: var(--muted); font-size: .85rem; }}
+    kbd {{ font: 700 .75rem var(--mono); padding: .1rem .4rem; border-radius: 6px; background: rgba(255,255,255,.1); }}
+    .hero .shot {{ border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 70px rgba(0,0,0,.5); background: var(--deep); aspect-ratio: 16 / 9; }}
+    .hero .shot img, .card .shot img {{ display: block; width: 100%; height: 100%; object-fit: cover; }}
+    .cards {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; margin: .5rem 0 2.2rem; }}
+    .card {{ display: flex; flex-direction: column; border-radius: 16px; border: 1px solid var(--line); background: rgba(15,32,54,.7); text-decoration: none; color: inherit; overflow: hidden; transition: transform .18s, border-color .18s; }}
+    .card:hover {{ transform: translateY(-3px); border-color: rgba(255,255,255,.3); }}
+    .card .shot {{ aspect-ratio: 16 / 9; background: var(--deep); }}
+    .card .body {{ padding: 1.1rem 1.2rem 1.3rem; display: flex; flex-direction: column; gap: .35rem; flex: 1; }}
+    .kick {{ margin: 0; font-size: .8rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }}
+    .card.know .kick {{ color: var(--cyan); }} .card.do .kick {{ color: var(--amber); }} .card.prove .kick {{ color: var(--blue); }}
+    .card h2 {{ margin: 0; font: 700 1.5rem/1.15 var(--serif); }}
+    .card p {{ margin: 0; color: #cfdbea; font-size: .98rem; }}
+    .go {{ margin-top: auto; padding-top: .6rem; font-weight: 700; color: var(--ink); }}
+    .honest {{ border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.2rem; background: rgba(255,255,255,.03); color: var(--muted); font-size: .95rem; }}
+    .honest strong {{ color: var(--ink); }}
+    .honest ul {{ margin: .4rem 0 0; padding-left: 1.2rem; }}
+    details.mechanics {{ margin-top: 2rem; border: 1px solid var(--line); border-radius: 14px; background: rgba(8,16,28,.6); }}
+    details.mechanics > summary {{ cursor: pointer; padding: 1rem 1.2rem; font-weight: 700; font-size: 1.05rem; }}
+    details.mechanics > .inner {{ padding: 0 1.2rem 1.4rem; }}
+    section.run {{ margin-top: 1.4rem; border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem 1.2rem; background: rgba(255,255,255,.03); }}
+    section.deny {{ border-top: 6px solid var(--bad); }} section.allow {{ border-top: 6px solid var(--good); }} section.verify {{ border-top: 6px solid var(--blue); }}
+    .section-kicker {{ margin: 0; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }}
+    h3 {{ margin: .15rem 0 .35rem; font: 700 1.6rem/1.1 var(--serif); }}
+    .command {{ display: inline-block; margin: .2rem 0 .8rem; padding: .25rem .55rem; background: #050b14; color: #cfe3ff; border-radius: 6px; font-family: var(--mono); font-size: .88rem; }}
+    .claim {{ margin-top: 0; }}
+    .checks {{ list-style: none; padding: 0; margin: .8rem 0; }}
+    .check {{ display: grid; grid-template-columns: 5.6rem 11rem 1fr; gap: .3rem .8rem; align-items: baseline; padding: .5rem 0; border-top: 1px solid var(--line); font-size: .92rem; }}
+    .check .detail {{ grid-column: 2 / -1; color: var(--muted); font-size: .88rem; }}
+    .mark {{ font-weight: 800; letter-spacing: .04em; font-size: .88rem; }}
+    .mark-fail {{ color: var(--bad); }} .mark-pass {{ color: var(--good); }} .mark-escalate, .mark-human {{ color: var(--amber); }}
+    .regime {{ font-family: var(--mono); font-weight: 700; }}
+    .fail-closed {{ background: rgba(255,107,107,.14); color: #ffb3b3; padding: .7rem .85rem; border-radius: 8px; font-weight: 650; }}
+    .pair {{ display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .6rem; }}
+    .panel {{ border-radius: 10px; padding: .75rem .8rem .9rem; }}
+    .panel h4 {{ margin: 0 0 .45rem; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }}
+    .panel.provider {{ background: rgba(255,107,107,.12); }} .panel.provider h4 {{ color: #ffb3b3; }}
+    .panel.restored {{ background: rgba(62,207,142,.12); }} .panel.restored h4 {{ color: #9de6c2; }}
+    .verify-result {{ margin: .4rem 0 .8rem; font: 700 1.7rem/1.15 var(--serif); color: var(--blue); }}
+    pre {{ margin: 0; white-space: pre-wrap; word-break: break-word; font: .84rem/1.4 var(--mono); color: #dbe7f5; }}
+    details.out {{ margin-top: 1rem; }} details.out > summary {{ cursor: pointer; font-weight: 650; }}
+    details.out pre {{ margin-top: .6rem; background: #050b14; padding: .9rem 1rem; border-radius: 8px; }}
+    footer {{ margin-top: 2rem; color: var(--muted); font-size: .88rem; }}
+    footer p {{ margin: .35rem 0; }}
+    @media (max-width: 900px) {{
+      html {{ font-size: 17px; }}
+      .hero {{ grid-template-columns: 1fr; }} .cards {{ grid-template-columns: 1fr; }}
+      .check {{ grid-template-columns: 5.2rem 1fr; }} .check .citation {{ grid-column: 1 / -1; }}
       .pair {{ grid-template-columns: 1fr; }}
     }}
   </style>
@@ -489,69 +398,87 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
   </div>
   <div class="wrap">
     <header class="hero">
-      <p class="eyebrow">Eastwind Private: a governed-agents demo on kognita</p>
-      <h1>Governed Agents That Survive Audit</h1>
-      <p class="meta">Ahmed Muzammil · Eastwind Private</p>
-      <p class="lede">A read-only record of the offline demo commands. An AE structured-note question is denied before retrieval or a model call. A Singapore money-market question is allowed, then shown as a redacted echo and the restored reply. The evidence hash chain verifies.</p>
-      <p class="lede">Offline echo model only. This deployment does not set an API key and does not call OpenAI.</p>
-      <nav>
-        <a href="#deny">DENY</a>
-        <a href="#allow">ALLOW</a>
-        <a href="#verify">Verify</a>
-        <a href="/admin/">Open admin demo</a>
-      </nav>
+      <div>
+        <p class="eyebrow">Eastwind Private: a governed-agents demo on kognita</p>
+        <h1>An AI colleague that can show its work</h1>
+        <p class="meta">Governed Agents That Survive Audit · Ahmed Muzammil · Eastwind Private</p>
+        <p class="lede">Watch one AI assistant do real work at a private bank, and see how it is kept safe: what it may see, what it may do, and the proof it leaves behind.</p>
+        <div class="cta">
+          <a class="btn primary" href="/story/">Start the walkthrough &rarr;</a>
+          <a class="btn" href="/admin/">Open the live admin console</a>
+        </div>
+        <p class="keys">Presenting? <kbd>&larr;</kbd> <kbd>&rarr;</kbd> to move, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to choose, <kbd>N</kbd> talk track, <kbd>M</kbd> mechanics, <kbd>F</kbd> full screen.</p>
+      </div>
+      <div class="shot">{hero_img}</div>
     </header>
 
-    <section class="deny" id="deny">
-      <p class="section-kicker">Cross-border structured note · AE</p>
-      <h2>DENY</h2>
-      <code class="command">eastwind run deny --fresh</code>
-      <p class="claim">HK_SFC and DIFC_DFSA both fail. Retrieval is not called. The model is not called.</p>
-      {_checks_html(demo.deny_checks)}
-      {fail_closed_html}
-      <details open>
-        <summary>Command output</summary>
-        {_pre(demo.deny, "transcript")}
-      </details>
+    <section class="cards" aria-label="The three questions">{cards}
     </section>
 
-    <section class="allow" id="allow">
-      <p class="section-kicker">Singapore money market · SG</p>
-      <h2>ALLOW</h2>
-      <code class="command">eastwind run allow --echo-model</code>
-      <p class="claim">The house view in zone SG at ceiling C2 is retrieved. The prompt is classified C2. Egress returns REDACT. The provider side sees placeholder tokens. The caller sees those tokens restored. The reply is a local echo.</p>
-      {_checks_html(demo.allow_checks)}
-      <div class="pair">
-        <div class="panel provider">
-          <h3>Provider saw · redacted</h3>
-          {_pre(demo.provider, "provider")}
-        </div>
-        <div class="panel restored">
-          <h3>Caller received · restored</h3>
-          {_pre(demo.restored, "restored")}
-        </div>
+    <section class="honest" aria-label="How to read this">
+      <strong>What is real here.</strong>
+      <ul>
+        <li>The bank, its clients and every citation are invented for this demo. The data is synthetic.</li>
+        <li>The AI model is an offline stand-in. No provider is contacted and no key is used.</li>
+        <li>The decisions are real Kognita results. The walkthrough replays a run made when this page was built, so it does not depend on a live system in the room.</li>
+      </ul>
+    </section>
+
+    <details class="mechanics">
+      <summary>Show the mechanics: the command transcripts behind the story</summary>
+      <div class="inner">
+        <section class="run deny" id="deny">
+          <p class="section-kicker">Cross-border structured note · AE</p>
+          <h3>DENY</h3>
+          <code class="command">eastwind run deny --fresh</code>
+          <p class="claim">HK_SFC and DIFC_DFSA both fail. Retrieval is not called. The model is not called.</p>
+          {_checks_html(demo.deny_checks)}
+          {fail_closed_html}
+          <details class="out" open>
+            <summary>Command output</summary>
+            {_pre(demo.deny, "transcript")}
+          </details>
+        </section>
+
+        <section class="run allow" id="allow">
+          <p class="section-kicker">Singapore money market · SG</p>
+          <h3>ALLOW</h3>
+          <code class="command">eastwind run allow --echo-model</code>
+          <p class="claim">The house view in zone SG at ceiling C2 is retrieved. The prompt is classified C2. Egress returns REDACT. The provider side sees placeholder tokens. The caller sees those tokens restored. The reply is a local echo.</p>
+          {_checks_html(demo.allow_checks)}
+          <div class="pair">
+            <div class="panel provider">
+              <h4>Provider saw · redacted</h4>
+              {_pre(demo.provider, "provider")}
+            </div>
+            <div class="panel restored">
+              <h4>Caller received · restored</h4>
+              {_pre(demo.restored, "restored")}
+            </div>
+          </div>
+          <details class="out" open>
+            <summary>Command output</summary>
+            {_pre(demo.allow, "transcript")}
+          </details>
+        </section>
+
+        <section class="run verify" id="verify">
+          <p class="section-kicker">Same store, after DENY then ALLOW</p>
+          <h3>Hash chain</h3>
+          <code class="command">eastwind verify</code>
+          <p class="verify-result">{_esc(demo.verify.strip())}</p>
+          <p class="claim">{demo.verify_events} events recomputed from the hash chain. The chain is intact.</p>
+          <details class="out" open>
+            <summary>Command output</summary>
+            {_pre(demo.verify, "transcript")}
+          </details>
+        </section>
       </div>
-      <details open>
-        <summary>Command output</summary>
-        {_pre(demo.allow, "transcript")}
-      </details>
-    </section>
-
-    <section class="verify" id="verify">
-      <p class="section-kicker">Same store, after DENY then ALLOW</p>
-      <h2>Hash chain</h2>
-      <code class="command">eastwind verify</code>
-      <p class="verify-result">{_esc(demo.verify.strip())}</p>
-      <p class="claim">{demo.verify_events} events recomputed from the hash chain. The chain is intact.</p>
-      <details open>
-        <summary>Command output</summary>
-        {_pre(demo.verify, "transcript")}
-      </details>
-    </section>
+    </details>
 
     <footer>
       <p><strong>Fiction.</strong> Eastwind Private, its clients, and every citation above are invented for this demo.</p>
-      <p>Built { _esc(stamp) } from eastwind { _esc(eastwind_version) } and kognita { _esc(kognita_version) }, by running the three commands above on a temporary store. The published site is this static page.</p>
+      <p>Built { _esc(stamp) } from eastwind { _esc(eastwind_version) } and kognita { _esc(kognita_version) }, by running the three commands above on a temporary store. The published site is this static page and the 3D walkthrough it links to.</p>
     </footer>
   </div>
 </body>
@@ -560,6 +487,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
 
 
 def build_page(output: Path) -> str:
+    """Build the landing page only. This is what the offline tests check."""
     demo = capture_demo()
     page = render_html(demo, built_at=datetime.now(timezone.utc))
     if "Fiction." not in page or "Eastwind Private is a fictional institution." not in page:
@@ -573,21 +501,92 @@ def build_page(output: Path) -> str:
     return page
 
 
+#: Files the published site must contain, relative to its root.
+SITE_FILES = (
+    "index.html", "story/index.html", "story/story.css", "story/app.js", "story/data.json",
+    "vendor/three/three.module.js", "vendor/three/three.core.js", "vendor/three/LICENSE",
+)
+
+
+def build_site(root: Path) -> None:
+    """Landing page, 3D walkthrough, vendored three.js, and the data the walkthrough replays."""
+    from eastwind.story import story_json
+
+    root = root if root.is_absolute() else REPO_ROOT / root
+    build_page(root / "index.html")
+    for source, target in ((WEB / "story", root / "story"), (WEB / "vendor", root / "vendor")):
+        shutil.copytree(source, target, dirs_exist_ok=True, ignore=shutil.ignore_patterns("data.json"))
+    payload = story_json()
+    secret = os.environ.get("OPENAI_API_KEY", "")
+    if secret and secret in payload:
+        raise RuntimeError("the story data contains OPENAI_API_KEY")
+    (root / "story" / "data.json").write_text(payload, encoding="utf-8")
+    missing = [name for name in SITE_FILES if not (root / name).is_file()]
+    if missing:
+        raise RuntimeError(f"the site is missing: {', '.join(missing)}")
+
+
+def _vercel_headers() -> list[dict]:
+    return json.loads((REPO_ROOT / "vercel.json").read_text(encoding="utf-8")).get("headers", [])
+
+
+def _matches(source: str, path: str) -> bool:
+    if source.endswith("/:path*"):
+        return path == source[: -len("/:path*")] or path.startswith(source[: -len(":path*")])
+    return source == path
+
+
+def serve(root: Path, port: int) -> None:
+    """Serve the built site on loopback with the headers vercel.json sets, so local equals deployed."""
+    import functools
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+    rules = _vercel_headers()
+
+    class Handler(SimpleHTTPRequestHandler):
+        def end_headers(self) -> None:
+            path = self.path.split("?", 1)[0]
+            sent: set[str] = set()
+            for rule in rules:
+                if _matches(rule["source"], path):
+                    for header in rule["headers"]:
+                        if header["key"] not in sent:  # several rules can match one path
+                            sent.add(header["key"])
+                            self.send_header(header["key"], header["value"])
+            super().end_headers()
+
+        def log_message(self, *args) -> None:  # keep the presenter's terminal quiet
+            pass
+
+    handler = functools.partial(Handler, directory=str(root))
+    with ThreadingHTTPServer(("127.0.0.1", port), handler) as server:
+        print(f"Serving {root} at http://127.0.0.1:{port}/  (Ctrl-C to stop)")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print()
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the static Eastwind demo page.")
+    parser = argparse.ArgumentParser(description="Build the Eastwind site: the demo page and the 3D walkthrough.")
     parser.add_argument(
         "--output",
         type=Path,
         default=DEFAULT_OUTPUT,
-        help="HTML file to write (default: public/index.html)",
+        help="landing page to write (default: public/index.html); the site is built in the same folder",
     )
+    parser.add_argument("--serve", action="store_true", help="after building, serve the site on 127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000, help="port for --serve (default 8000)")
     args = parser.parse_args(argv)
     try:
-        build_page(args.output)
+        output = args.output if args.output.is_absolute() else REPO_ROOT / args.output
+        build_site(output.parent)
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    print(f"wrote {args.output}")
+    print(f"wrote {output.parent}")
+    if args.serve:
+        serve(output.parent, args.port)
     return 0
 
 
