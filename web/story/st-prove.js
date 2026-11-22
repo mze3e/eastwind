@@ -226,7 +226,7 @@ export function buildProve(ctx) {
 
   // ------------------------------------------------------------ interface
   const cams = {
-    'prove-receipt': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 2.4, arc: 3, fit: 10.8 },
+    'prove-receipt': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 2.4, arc: 3, fit: 11.6 },
     'prove-verify': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 1.6, arc: 1, fit: 10.8 },
     'prove-tamper': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 1.6, arc: 1, fit: 10.8 },
     'prove-rebuild': { pos: [0.2, 6.5, 24], look: [0, 2.6, 0], dur: 1.6, arc: 1, fit: 10.8 },

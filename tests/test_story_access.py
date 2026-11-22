@@ -149,7 +149,7 @@ def test_the_browser_check_names_every_size_the_readme_promises():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     block = script.split("const SIZES = {", 1)[1].split("};", 1)[0]
     names = set(re.findall(r"'?([a-z-]+)'?: \[\d+, \d+\]", block))
-    assert names == {"desktop", "laptop", "tablet-wide", "tablet", "phone", "phone-landscape"}
+    assert names == {"desktop-wide", "desktop", "laptop", "side-minimum", "tablet-wide", "tablet", "phone", "phone-landscape"}
     for name in names:
         assert name in readme, f"the README does not mention the {name} size"
 

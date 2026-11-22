@@ -59,8 +59,9 @@ How it stays honest:
 
 ```bash
 node scripts/check_story.cjs                       # builds and serves the site, then checks laptop, tablet and phone
-node scripts/check_story.cjs --all                 # desktop 1440x810, laptop 1280x720, tablet-wide 1024x768,
-                                                   # tablet 768x1024, phone 390x844, phone-landscape 844x390
+node scripts/check_story.cjs --all                 # desktop-wide 1920x1080, desktop 1440x810, laptop 1280x720,
+                                                   # side-minimum 1100x600 (the smallest window with the side-by-side layout),
+                                                   # tablet-wide 1024x768, tablet 768x1024, phone 390x844, phone-landscape 844x390
 node scripts/check_story.cjs --sizes phone --steps know-border,break-outage
 node scripts/check_story.cjs --base http://127.0.0.1:8000/story/    # a server that is already running
 ```
