@@ -8,11 +8,12 @@
   <link rel="stylesheet" href="story.css">
 </head>
 <body>
+  <a class="skip" href="#panel">Skip to the story</a>
   <canvas id="stage" aria-hidden="true"></canvas>
   <div id="labels" aria-hidden="true"></div>
   <div id="flash" aria-hidden="true"></div>
 
-  <header class="top">
+  <header class="top" id="top">
     <a class="brand" href="../" aria-label="Back to the Eastwind Private overview"><span class="mark"></span>Eastwind Private</a>
     <nav id="chapters" aria-label="Chapters"></nav>
     <div class="tools">
@@ -22,7 +23,7 @@
     </div>
   </header>
 
-  <main class="panel" id="panel">
+  <main class="panel" id="panel" tabindex="-1">
     <p class="kicker" id="kicker"></p>
     <h1 id="title"></h1>
     <p class="point" id="point"></p>
@@ -33,6 +34,7 @@
     <section class="map" id="map" aria-label="Everything else it can do" hidden></section>
     <ul class="taglog" id="taglog" aria-label="What the picture shows"></ul>
   </main>
+  <p class="sr" id="announce" role="status" aria-live="polite"></p>
 
   <aside class="drawer notes" id="notes" hidden aria-label="Presenter notes">
     <h2>Talk track</h2>
@@ -45,9 +47,10 @@
     <p class="hint">What Kognita actually recorded for this step.</p>
     <pre class="cmd" id="mech-cmd"></pre>
     <table id="mech-facts"></table>
+    <p class="hint real" id="mech-real"></p>
   </aside>
 
-  <footer class="foot">
+  <footer class="foot" id="foot">
     <div class="nav">
       <button id="btn-back" type="button" aria-label="Previous step">&larr; Back</button>
       <button id="btn-next" type="button" class="primary" aria-label="Next step">Next &rarr;</button>

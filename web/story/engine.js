@@ -143,6 +143,8 @@ export class Stage {
     this.shiftTarget = 0;
     this.speed = 1;   // a test hook: automated checks run the choreography faster
     this.wide = false;
+    this.shell = 'side';       // 'side': caption panel at the left. 'sheet': under the picture. 'rail': a left rail on short windows.
+    this.insetTop = 0; this.insetBottom = 0; this.insetLeft = 0; this.shiftY = 0;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0b1626);
     this.scene.fog = new THREE.Fog(0x0b1626, 90, 300);
@@ -176,17 +178,30 @@ export class Stage {
   scope() { return new Scope(this); }
 
   /** Title-card steps use the full width; the others leave room for the caption panel. */
-  setWide(wide) { this.wide = wide; this.shiftTarget = wide ? 0 : this.shiftDefault; }
+  setWide(wide) { this.wide = wide; this.shiftTarget = wide && this.shell === 'side' ? 0 : this.shiftDefault; }
+
+  /**
+   * On narrow windows the caption is a sheet along the bottom, and on short ones a rail at the left.
+   * `top`, `bottom` and `left` are the pixels covered by the bars and the caption, so the picture is
+   * framed in what is left between them. A title card keeps the caption, so it never gets the full width.
+   */
+  setShell(shell, { top = 0, bottom = 0, left = 0 } = {}) {
+    if (shell === this.shell && top === this.insetTop && bottom === this.insetBottom && left === this.insetLeft) return;
+    this.shell = shell; this.insetTop = top; this.insetBottom = bottom; this.insetLeft = left;
+    this.resize();
+  }
 
   resize() {
     const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
     this.width = w; this.height = h;
     this.camera.aspect = w / h;
-    // Keep the subject clear of the caption panel on wide screens.
-    this.shiftDefault = w >= 980 ? Math.min(240, w * 0.17) : 0;
-    this.shiftTarget = this.wide ? 0 : this.shiftDefault;
+    // Keep the subject clear of the caption panel on wide screens, or above the sheet on small ones.
+    const compact = this.shell !== 'side';
+    this.shiftDefault = compact ? this.insetLeft / 2 : w >= 980 ? Math.min(240, w * 0.17) : 0;
+    this.shiftTarget = this.wide && !compact ? 0 : this.shiftDefault;
     this.shiftX = this.shiftTarget;
-    this.camera.setViewOffset(w, h, -this.shiftX, 0, w, h);
+    this.shiftY = compact ? (this.insetTop - this.insetBottom) / 2 : 0;   // the picture moves down by this
+    this.camera.setViewOffset(w, h, -this.shiftX, -this.shiftY, w, h);
     if (this.renderer) this.renderer.setSize(w, h, false);
     if (this.currentView) { const c = this.fitView(this.currentView); this.snap(c.pos, c.look); }
   }
@@ -199,12 +214,16 @@ export class Stage {
   fitView(cam) {
     const p = new THREE.Vector3(...cam.pos), l = new THREE.Vector3(...cam.look);
     const dir = p.clone().sub(l); const d0 = dir.length(); dir.normalize();
-    const side = !this.wide && this.width >= 980;
-    const freeLeft = side ? Math.min(460, this.width * 0.38) + 40 : 0;
-    const free = (this.width - freeLeft) / this.width;
+    const compact = this.shell !== 'side';
+    const side = !compact && !this.wide && this.width >= 980;
+    const freeLeft = side ? Math.min(460, this.width * 0.38) + 40 : this.insetLeft;
+    const free = Math.max(0.2, (this.width - freeLeft) / this.width);
+    const freeHeight = compact ? Math.max(0.2, (this.height - this.insetTop - this.insetBottom) / this.height) : 1;
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const need = cam.fit ? cam.fit / (tanHalf * this.camera.aspect * free) : 0;
-    return { pos: l.clone().addScaledVector(dir, Math.max(d0, need)).toArray(), look: cam.look };
+    // The scenes are about twice as wide as they are tall. Width decides, unless the free part is very wide and short.
+    const need = cam.fit ? Math.max(cam.fit / (tanHalf * this.camera.aspect * free), (cam.fit * 0.5) / (tanHalf * freeHeight)) : 0;
+    // `maxDist` lets a very wide scene be cropped on a narrow screen instead of shrinking into the fog.
+    return { pos: l.clone().addScaledVector(dir, Math.max(d0, Math.min(need, cam.maxDist ?? Infinity))).toArray(), look: cam.look };
   }
 
   /** Go to a camera preset, fitted to this viewport. Re-fitted on resize. */
@@ -217,6 +236,7 @@ export class Stage {
 
   /** Glide the camera. `arc` lifts it mid-flight for a walkthrough feel. */
   fly(pos, look, seconds = 1.8, arc = 0) {
+    if (reducedMotion) { this.snap(pos, look); return Promise.resolve(); }   // no gliding for people who ask for less motion
     if (this.flightScope) this.flightScope.cancel();
     const scope = this.flightScope = this.scope();
     const p0 = this.camBase.clone(), l0 = this.lookTarget.clone();
@@ -246,7 +266,7 @@ export class Stage {
     for (const fn of this.frameFns) fn(this.time, dt);
     if (Math.abs(this.shiftTarget - this.shiftX) > 0.4) {
       this.shiftX += (this.shiftTarget - this.shiftX) * Math.min(1, dt * 4);
-      this.camera.setViewOffset(this.width, this.height, -this.shiftX, 0, this.width, this.height);
+      this.camera.setViewOffset(this.width, this.height, -this.shiftX, -this.shiftY, this.width, this.height);
     }
     const drift = reducedMotion ? 0 : 1;
     this.camera.position.set(

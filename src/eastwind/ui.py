@@ -243,7 +243,7 @@ progress.meter{width:100%;height:.8rem;accent-color:var(--warn)}.metered{display
 .rules{list-style:none;padding:0;margin:.4rem 0}.rule{padding:.5rem 0;border-bottom:1px solid var(--line)}.rule small{display:block}
 .proposal{display:grid;gap:.15rem}.proposal b{font:700 1.4rem var(--serif)}
 footer{max-width:76rem;margin:0 auto;padding:0 1.2rem 2rem;color:var(--muted);font-size:.85rem}
-@media (max-width:860px){.c3,.c4,.c2{grid-template-columns:1fr}.qgrid{grid-template-columns:1fr}.cta{margin-left:0}.ladder{min-height:9rem}.ladder li span{display:none}}
+@media (max-width:860px){.c3,.c4,.c2{grid-template-columns:minmax(0,1fr)}.qgrid{grid-template-columns:minmax(0,1fr)}.frow{flex-wrap:wrap;row-gap:.1rem}.frow .k{min-width:0;flex:1 1 100%}.frow em{margin-left:0}.cta{margin-left:0}.ladder{min-height:9rem}.ladder li span{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media print{body{background:#fff;color:#000}.banner,header.top,nav.main,footer,form.action{display:none}.card{border:1px solid #999;background:#fff}}
 """

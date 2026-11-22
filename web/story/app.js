@@ -1,5 +1,5 @@
 // App: loads the captured story, builds the world, and drives it step by step along a path.
-import { Stage, THREE } from './engine.js';
+import { Stage, THREE, reducedMotion } from './engine.js';
 import { buildWorld } from './world.js';
 import { buildColleague } from './st-colleague.js';
 import { buildKnow } from './st-know.js';
@@ -13,7 +13,12 @@ const el = (tag, props = {}, ...kids) => {
   for (const k of kids) node.append(k);
   return node;
 };
-const plain = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent.replace(/\s+/g, ' ').trim(); };
+// A label's markup as one readable line: its small print follows it after a dash, list items after semicolons.
+const plain = (html) => {
+  const d = document.createElement('div');
+  d.innerHTML = html.replace(/<small[^>]*>/gi, ' — ').replace(/<\/li>/gi, '; ').replace(/<br\s*\/?>/gi, ' ');
+  return d.textContent.replace(/\s+/g, ' ').replace(/;\s*$/, '').trim();
+};
 
 async function boot() {
   const stage = new Stage($('stage'), $('labels'));
@@ -95,7 +100,36 @@ async function boot() {
     });
   }
 
-  $('honest').textContent = `Workshop fiction. Synthetic data. The AI model is an offline stand-in; the decisions you see are real Kognita ${story.meta.kognita} results, replayed from a run built ${story.meta.built_at}.`;
+  // The short line is always on screen; on a phone the rest sits in the mechanics drawer instead.
+  const whatIsReal = `The AI model is an offline stand-in; the decisions you see are real Kognita ${story.meta.kognita} results, replayed from a run built ${story.meta.built_at}.`;
+  $('honest').replaceChildren('Workshop fiction. Synthetic data. ', el('span', { className: 'more', textContent: whatIsReal }));
+  $('mech-real').textContent = `What is real here. Workshop fiction and synthetic data. ${whatIsReal}`;
+
+  // ----------------------------------------------------------- layout
+  // Wide windows put the caption beside the picture. Narrow ones put it in a sheet under the picture, and short
+  // ones (a phone on its side) in a rail at the left. The engine frames the picture in whatever the caption
+  // leaves free, so it is told what is covered. Phones have no room for labels in the picture; see the CSS.
+  function applyShell() {
+    const w = window.innerWidth, h = window.innerHeight, body = document.body;
+    const rail = h < 500, sheet = !rail && w < 980;
+    const shell = rail ? 'rail' : sheet ? 'sheet' : 'side';
+    body.dataset.shell = shell;
+    body.dataset.size = w < 700 || rail ? 'phone' : sheet ? 'tablet' : 'desktop';
+    body.toggleAttribute('data-compact', shell !== 'side');
+    const top = $('top').getBoundingClientRect().bottom, foot = $('foot').getBoundingClientRect().height;
+    const root = document.documentElement.style;
+    root.setProperty('--top', `${Math.round(top)}px`);
+    root.setProperty('--foot', `${Math.round(foot)}px`);
+    const panel = $('panel').getBoundingClientRect();
+    // The map is text over the whole screen, and a hidden caption (the preview renderer hides it) covers nothing.
+    const covers = shell !== 'side' && body.dataset.layout !== 'map' && panel.height > 0;
+    stage.setShell(shell, covers ? {
+      top: top + (body.dataset.size === 'tablet' ? 44 : 0),          // room for labels above the scene
+      bottom: rail ? foot : h - panel.top,
+      left: rail ? panel.right : 0,
+    } : {});
+  }
+  window.addEventListener('resize', applyShell);
 
   // ----------------------------------------------------------- state
   let current = -1, scope = null, choiceScope = null, picked = null;
@@ -188,6 +222,13 @@ async function boot() {
       if (c.id === step.chapter) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
       b.classList.toggle('done', seenChapters.has(c.id));
       b.classList.toggle('skipped', !c.steps.some((s) => pathSet.has(s.id)));
+      if (c.id === step.chapter) {
+        const strip = $('chapters');
+        if (strip.scrollWidth > strip.clientWidth) {
+          const here = b.getBoundingClientRect(), box = strip.getBoundingClientRect();
+          strip.scrollTo({ left: strip.scrollLeft + (here.left - box.left) - (box.width - here.width) / 2, behavior: reducedMotion ? 'auto' : 'smooth' });
+        }
+      }
     });
     dotButtons.forEach(([i, b]) => { b.classList.toggle('on', i === current); b.classList.toggle('seen', i !== current && seen.has(i)); });
     const order = pathOrder(), position = order.indexOf(current);
@@ -195,6 +236,8 @@ async function boot() {
     $('pathinfo').textContent = position >= 0 ? `${p.label} · step ${position + 1} of ${order.length}` : `${p.label}`;
     $('btn-back').disabled = previousIndex() === undefined;
     $('btn-next').textContent = nextIndex() === undefined ? 'Start again' : current === 0 ? 'Start →' : 'Next →';
+    document.documentElement.style.setProperty('--progress', position >= 0 ? String((position + 1) / order.length) : '0');
+    $('announce').textContent = position >= 0 ? `Step ${position + 1} of ${order.length}: ${step.title}` : step.title;
   }
 
   function go(index, { quiet = false } = {}) {
@@ -208,6 +251,8 @@ async function boot() {
     const layout = step.layout === 'map' ? 'map' : (step.chapter === 'welcome' || step.chapter === 'recap') ? 'wide' : 'side';
     document.body.dataset.layout = layout; stage.setWide(layout !== 'side');
     renderPanel(step); renderChoices(step); renderChrome();
+    $('panel').scrollTop = 0;
+    applyShell();
     if (!quiet) writeUrl();
 
     const station = stations[step.chapter];
@@ -227,6 +272,7 @@ async function boot() {
     [...$('choices').children].forEach((b, k) => { b.classList.remove('nudge'); b.classList.toggle('picked', k === i); });
     const result = $('result'); result.hidden = false; result.textContent = choice.result; result.className = `result ${choice.tone || ''}`;
     result.style.animation = 'none'; void result.offsetWidth; result.style.animation = '';
+    if (document.body.dataset.shell === 'sheet') result.scrollIntoView({ block: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' });
     const station = stations[step.chapter];
     if (station && stage.hasGL) {
       if (choiceScope) choiceScope.cancel();
@@ -251,6 +297,10 @@ async function boot() {
   window.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key;
+    if (k === 'Escape') {
+      for (const { btn, drawer } of [notes, mech]) { drawer.hidden = true; btn.setAttribute('aria-pressed', 'false'); }
+      return;
+    }
     const onControl = document.activeElement && ['BUTTON', 'A', 'INPUT', 'SELECT'].includes(document.activeElement.tagName);
     if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); next(); }
     else if ((k === ' ' || k === 'Enter') && !onControl) { e.preventDefault(); next(); }
@@ -267,6 +317,8 @@ async function boot() {
   // A small hook for the preview renderer and for tests: navigation, a camera override and a time scale.
   window.eastwindStory = {
     go, choose, setPath, view: (cam) => stage.view(cam, { snap: true }), speed: (n) => { stage.speed = n; },
+    // How much is still moving: running animations plus labels that have not yet appeared. Zero means settled.
+    busy: () => stage.tweens.size + [...stage.labels.items].filter((item) => performance.now() < item.born).length,
     steps: steps.map((s) => s.id), get current() { return current; }, get path() { return pathId; },
   };
 

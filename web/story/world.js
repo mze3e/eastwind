@@ -46,7 +46,7 @@ export function buildWorld(ctx) {
   stage.frameFns.add((t) => specks.userData.tick(t));
 
   const mid = (LAST + X.colleague) / 2;
-  const overview = { pos: [mid, 60, 98], look: [mid, 0, 27], dur: 2.8, arc: 6, fit: 74 };
+  const overview = { pos: [mid, 60, 98], look: [mid, 0, 27], dur: 2.8, arc: 6, fit: 74, maxDist: 150 };
   const cams = {
     welcome: overview,
     recap: overview,

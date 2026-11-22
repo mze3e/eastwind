@@ -24,9 +24,9 @@ body[data-chapter="colleague"], body[data-chapter="welcome"], body[data-chapter=
 /* ------------------------------------------------------------- top bar */
 .top { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 1.2rem; padding: .7rem 1.2rem; z-index: 5;
   background: linear-gradient(180deg, rgba(11, 22, 38, .92), rgba(11, 22, 38, 0)); }
-.brand { display: inline-flex; align-items: center; gap: .55rem; color: var(--ink); text-decoration: none; font: 700 1.05rem var(--serif); letter-spacing: .01em; white-space: nowrap; }
+.brand { display: inline-flex; align-items: center; gap: .55rem; min-height: 32px; min-width: 32px; color: var(--ink); text-decoration: none; font: 700 1.05rem var(--serif); letter-spacing: .01em; white-space: nowrap; }
 .brand .mark { width: 1.05rem; height: 1.05rem; border-radius: 50%; background: conic-gradient(var(--gold), #f7dca6, var(--gold)); box-shadow: 0 0 14px rgba(229, 181, 103, .6); }
-#chapters { display: flex; gap: .35rem; flex: 1; justify-content: center; flex-wrap: wrap; }
+#chapters { display: flex; gap: .35rem; flex: 1; min-width: 0; justify-content: center; flex-wrap: wrap; }
 #chapters button { font: 650 .82rem var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: rgba(255, 255, 255, .04);
   border: 1px solid var(--line); border-radius: 999px; padding: .38rem .85rem; cursor: pointer; transition: all .2s; }
 #chapters button:hover { color: var(--ink); border-color: rgba(255, 255, 255, .3); }
@@ -36,7 +36,11 @@ body[data-chapter="colleague"], body[data-chapter="welcome"], body[data-chapter=
 .tools button, .foot button { font: 600 .85rem var(--sans); color: var(--ink); background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 10px; padding: .45rem .8rem; cursor: pointer; }
 .tools button:hover, .foot button:hover { background: rgba(255, 255, 255, .13); }
 .tools button[aria-pressed="true"] { background: var(--accent); color: #0b1626; border-color: var(--accent); }
-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, .panel:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.panel:focus { outline: none; }
+.skip { position: fixed; left: .8rem; top: -4rem; z-index: 30; padding: .6rem 1rem; border-radius: 10px; background: var(--gold); color: #0b1626; font-weight: 700; text-decoration: none; }
+.skip:focus { top: .6rem; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* --------------------------------------------------------- caption panel */
 .panel { position: fixed; left: 1.2rem; bottom: 7.6rem; top: 4.6rem; width: min(460px, 38vw); z-index: 4; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
@@ -120,9 +124,12 @@ body[data-layout="map"] .point { background: none; border: 0; box-shadow: none; 
 .foot button:disabled { opacity: .35; cursor: default; }
 .dots { list-style: none; display: flex; gap: .3rem; margin: 0; padding: 0; flex-wrap: wrap; align-items: center; }
 .dots li { display: contents; }
-.dots button { width: .7rem; height: .7rem; padding: 0; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .2); }
-.dots button.gap { margin-left: .5rem; }
-.dots button.on { background: var(--accent); transform: scale(1.35); } .dots button.seen { background: rgba(255, 255, 255, .55); }
+.dots { gap: 0; }
+.dots button { position: relative; width: 1.5rem; height: 1.5rem; min-width: 24px; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.dots button::before { content: ""; position: absolute; left: 50%; top: 50%; width: .7rem; height: .7rem; margin: -.35rem 0 0 -.35rem; border-radius: 50%; background: rgba(255, 255, 255, .25); transition: transform .2s; }
+.dots button.gap { margin-left: .4rem; }
+.dots button.on::before { background: var(--accent); transform: scale(1.35); } .dots button.seen::before { background: rgba(255, 255, 255, .6); }
+.dots button:hover::before { background: rgba(255, 255, 255, .85); } .dots button.on:hover::before { background: var(--accent); }
 .pathinfo { margin: 0; font-size: .82rem; font-weight: 650; color: var(--muted); text-align: right; }
 .honest { grid-column: 1 / -1; margin: 0; font-size: .78rem; color: var(--muted); }
 
@@ -153,12 +160,62 @@ body[data-layout="wide"] .counters, body[data-layout="map"] .counters { left: 1.
 .loading.gone { display: none; }
 .nogl[hidden] { display: none; }
 
-@media (max-width: 980px) {
-  .panel { width: auto; right: 1rem; left: 1rem; top: auto; bottom: 9.8rem; max-height: 46vh; overflow: auto; }
-  .choices { left: 1rem; right: 1rem; bottom: 5rem; }
-  .drawer { width: auto; left: 1rem; right: 1rem; }
-  #chapters button { padding: .3rem .55rem; font-size: .7rem; }
-  .tools button#btn-full { display: none; }
-  .brand { font-size: .9rem; }
-}
+/* ------------------------------------------- small screens: the caption leaves the side of the picture
+   app.js sets body[data-shell]: "side" on wide windows, "sheet" (a panel under the picture) under 980px wide,
+   "rail" (a panel at the left) under 500px high. Both of the last two are [data-compact]. body[data-size] is
+   "phone" under 700px wide or 500px high, "tablet" in between and "desktop" otherwise. The picture is framed
+   in the space the caption leaves free. */
+body[data-compact] .top { padding: .5rem .8rem; gap: .6rem; }
+body[data-compact] #chapters { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-inline: .7rem;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 .7rem, #000 calc(100% - .7rem), transparent); mask-image: linear-gradient(90deg, transparent, #000 .7rem, #000 calc(100% - .7rem), transparent); }
+body[data-compact] #chapters::-webkit-scrollbar { display: none; }
+body[data-compact] #chapters button { flex: none; min-height: 32px; padding: .3rem .65rem; font-size: .72rem; }
+body[data-compact] #btn-full { display: none; }
+body[data-compact] .tools button { min-height: 32px; padding: .3rem .6rem; font-size: .78rem; }
+
+body[data-compact][data-layout] .panel { top: auto; bottom: var(--foot, 5.5rem); transform: none; overflow-y: auto; overscroll-behavior: contain; scroll-padding-bottom: 1rem;
+  justify-content: flex-start; align-items: stretch; text-align: left; pointer-events: auto; border: 1px solid var(--line);
+  background: rgba(8, 16, 28, .95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 -12px 40px rgba(0, 0, 0, .45); }
+body[data-shell="sheet"][data-layout] .panel { left: 0; right: 0; width: auto; height: min(46vh, 30rem); height: min(46dvh, 30rem);
+  padding: 1rem 1rem 1.3rem; border-radius: 20px 20px 0 0; border-bottom: 0; }
+body[data-size="tablet"][data-layout] .panel { height: min(40vh, 26rem); height: min(40dvh, 26rem); }
+body[data-shell="rail"][data-layout] .panel { left: 0; right: auto; top: var(--top, 3rem); width: min(46vw, 26rem); height: auto;
+  padding: .8rem 1rem 1rem; border-radius: 0 16px 16px 0; border-left: 0; box-shadow: 12px 0 40px rgba(0, 0, 0, .35); }
+body[data-compact][data-layout="map"] .panel { top: var(--top, 3rem); left: 0; right: 0; width: auto; height: auto; border-radius: 0; border-left: 1px solid var(--line); padding: 1rem 1rem 2rem; }
+body[data-compact][data-layout] .panel > * { flex: none; }
+body[data-compact][data-layout] .kicker { text-align: left; }
+body[data-compact][data-layout] .panel h1 { font-size: clamp(1.35rem, 5.4vw, 1.9rem); margin-bottom: .5rem; text-shadow: none; }
+body[data-compact][data-layout] .point { max-width: none; padding: 0; border: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 1rem; }
+body[data-compact][data-layout] .legend { grid-template-columns: 1fr; }
+body[data-compact][data-layout] .legend li { flex-direction: row; text-align: left; align-items: baseline; gap: .7rem; }
+body[data-compact][data-layout] .choices { position: static; margin: .9rem 0 0; flex-direction: column; flex-wrap: nowrap; gap: .5rem; justify-content: flex-start; pointer-events: auto; }
+body[data-compact][data-layout] .choices button { width: 100%; min-height: 44px; justify-content: flex-start; text-align: left; font-size: 1rem; padding: .65rem 1rem; }
+body[data-compact][data-layout] .result { margin-top: .7rem; }
+body[data-shell="sheet"] .counters { left: .8rem; right: .8rem; top: calc(var(--top, 3rem) + .4rem); flex-wrap: wrap; }
+body[data-shell="rail"] .counters { left: calc(min(46vw, 26rem) + 1rem); right: .8rem; top: calc(var(--top, 3rem) + .4rem); flex-wrap: wrap; }
+body[data-compact][data-layout="map"] .counters { display: none; }
+
+body[data-compact] .foot { grid-template-columns: auto 1fr auto; padding: .5rem .8rem .6rem; background: rgba(8, 16, 28, .98); border-top: 1px solid var(--line); }
+body[data-compact] .foot::before { content: ""; position: absolute; left: 0; top: -1px; height: 3px; width: calc(var(--progress, 0) * 100%); background: var(--accent); transition: width .3s; }
+body[data-compact] .foot button { min-height: 44px; }
+body[data-compact] .dots { display: none; }
+body[data-compact] .pathinfo { text-align: right; }
+body[data-compact] .honest { font-size: .7rem; }
+body[data-shell="sheet"] .drawer { left: .6rem; right: .6rem; top: auto; width: auto; bottom: calc(var(--foot, 5.5rem) + .6rem); max-height: 50vh; max-height: 50dvh; }
+body[data-shell="rail"] .drawer { left: auto; right: .6rem; top: calc(var(--top, 3rem) + .4rem); width: min(46vw, 26rem); max-height: calc(100vh - var(--top, 3rem) - var(--foot, 5.5rem) - 1rem); }
+
+/* A phone has no room for labels floating in the picture, so what they say is listed in the caption instead. */
+body[data-size="phone"] #labels { display: none; }
+body[data-size="phone"] .brand { font-size: 0; gap: 0; } body[data-size="phone"] .brand .mark { width: 1.25rem; height: 1.25rem; }
+body[data-size="phone"] .foot { grid-template-columns: auto 1fr; }
+body[data-size="phone"] .honest .more { display: none; }
+body[data-size="phone"] .taglog { position: static; width: auto; height: auto; margin: .9rem 0 0; padding: .6rem .8rem .6rem 1.6rem; overflow: visible; clip: auto; white-space: normal;
+  border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .04); font-size: .9rem; color: #cfdbea; }
+body[data-size="phone"] .taglog::before { content: "What the picture shows"; display: block; margin: 0 0 .3rem -.8rem; font: 700 .72rem var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+body[data-size="phone"] .taglog li { margin: .15rem 0; }
+body[data-size="phone"] .taglog:empty { display: none; }
+body[data-size="phone"] .tiles { grid-template-columns: 1fr; }
+body[data-size="phone"] .mapbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+body[data-size="phone"] .mapbar button { flex: none; min-height: 36px; }
+@media (hover: none) { .choices button:hover { transform: none; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
