@@ -1,10 +1,11 @@
-// World: the ground, the path between stations, platforms, signs and ambient motion.
+// World: the ground, the path between stations, platforms and ambient motion.
 import { THREE, reducedMotion } from './engine.js';
 import { C, platform, dust, packet, basic } from './kit.js';
 
 /** Where each station sits along the path. */
-export const X = { colleague: 0, know: 30, do: 60, prove: 90 };
-export const ACCENT = { colleague: C.gold, know: C.cyan, do: C.amber, prove: C.blue };
+export const X = { colleague: 0, know: 30, do: 60, prove: 90, break: 120 };
+export const ACCENT = { colleague: C.gold, know: C.cyan, do: C.amber, prove: C.blue, break: C.bad };
+const LAST = X.break;   // the end of the path
 
 export function buildWorld(ctx) {
   const { stage } = ctx;
@@ -17,22 +18,22 @@ export function buildWorld(ctx) {
   const fill = new THREE.DirectionalLight(0xdbe8ff, 0.9); fill.position.set(0, 14, 60); scene.add(fill);
 
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 800), new THREE.MeshStandardMaterial({ color: 0x0a1a2d, roughness: 1 }));
-  ground.rotation.x = -Math.PI / 2; ground.position.set(45, -0.4, 0); group.add(ground);
+  ground.rotation.x = -Math.PI / 2; ground.position.set(60, -0.4, 0); group.add(ground);
   const grid = new THREE.GridHelper(900, 150, C.grid, C.grid);
-  grid.material.transparent = true; grid.material.opacity = 0.16; grid.position.set(45, -0.38, 0); group.add(grid);
+  grid.material.transparent = true; grid.material.opacity = 0.16; grid.position.set(60, -0.38, 0); group.add(grid);
 
   // The path between stations, with data packets drifting along it.
-  const path = new THREE.Mesh(new THREE.BoxGeometry(X.prove - X.colleague, 0.04, 1.2), basic(0x16314f, 0.9));
-  path.position.set((X.prove + X.colleague) / 2, -0.3, 0); group.add(path);
+  const path = new THREE.Mesh(new THREE.BoxGeometry(LAST - X.colleague, 0.04, 1.2), basic(0x16314f, 0.9));
+  path.position.set((LAST + X.colleague) / 2, -0.3, 0); group.add(path);
   for (const s of [-0.6, 0.6]) {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(X.prove - X.colleague, 0.05, 0.05), basic(C.gold, 0.55));
-    l.position.set((X.prove + X.colleague) / 2, -0.26, s); group.add(l);
+    const l = new THREE.Mesh(new THREE.BoxGeometry(LAST - X.colleague, 0.05, 0.05), basic(C.gold, 0.55));
+    l.position.set((LAST + X.colleague) / 2, -0.26, s); group.add(l);
   }
   const flow = [];
   for (let i = 0; i < 14; i++) { const p = packet([C.gold, C.cyan, C.amber, C.blue][i % 4], 0.12); p.userData.u = i / 14; group.add(p); flow.push(p); }
   stage.frameFns.add((t) => {
     if (reducedMotion) return;
-    for (const p of flow) { const u = (p.userData.u + t * 0.018) % 1; p.position.set(X.colleague + u * (X.prove - X.colleague), -0.1 + Math.sin(t * 2 + p.userData.u * 9) * 0.08, 0); }
+    for (const p of flow) { const u = (p.userData.u + t * 0.018) % 1; p.position.set(X.colleague + u * (LAST - X.colleague), -0.1 + Math.sin(t * 2 + p.userData.u * 9) * 0.08, 0); }
   });
 
   const platforms = {};
@@ -41,14 +42,15 @@ export function buildWorld(ctx) {
     const p = platform(r, ACCENT[id]); p.position.set(X[id], 0, 0); group.add(p); platforms[id] = p;
   }
 
-  const specks = dust(); group.add(specks);
+  const specks = dust(300, [160, 24, 70], [60, 9, 0]); group.add(specks);
   stage.frameFns.add((t) => specks.userData.tick(t));
 
-  const mid = (X.prove + X.colleague) / 2;
-  const overview = { pos: [mid, 54, 84], look: [mid, 0, 16], dur: 2.8, arc: 6, fit: 62 };
+  const mid = (LAST + X.colleague) / 2;
+  const overview = { pos: [mid, 60, 98], look: [mid, 0, 27], dur: 2.8, arc: 6, fit: 74, maxDist: 150 };
   const cams = {
     welcome: overview,
-    recap: { pos: [mid, 54, 84], look: [mid, 0, 16], dur: 2.8, arc: 6, fit: 62 },
+    recap: overview,
+    'more-map': overview,
   };
 
   const lit = (id, on) => {
@@ -59,7 +61,7 @@ export function buildWorld(ctx) {
 
   /** Light every platform for the overview steps, otherwise only the one in use. */
   const setActive = (chapter) => {
-    const all = chapter === 'welcome' || chapter === 'recap';
+    const all = chapter === 'welcome' || chapter === 'recap' || chapter === 'more';
     for (const id of Object.keys(X)) lit(id, all || id === chapter);
   };
 
@@ -67,16 +69,19 @@ export function buildWorld(ctx) {
     group, platforms, lit, setActive,
     camera: (stepId) => cams[stepId],
     enter(stepId, step, scope) {
+      if (stepId === 'more-map') { /* the map is HTML over the overview; nothing to animate */ }
       if (stepId === 'recap') {
         ctx.tag('<b>Know</b><small>only approved sources, only what a person may see</small>', new THREE.Vector3(X.know, 11, 0), { tone: 'good', cls: 'big wrap', delay: 0.6 });
         ctx.tag('<b>Do</b><small>the bank sets independence, people decide the big calls</small>', new THREE.Vector3(X.do, 11, 0), { tone: 'warn', cls: 'big wrap', delay: 1.0 });
         ctx.tag('<b>Prove</b><small>a sealed record anyone can check</small>', new THREE.Vector3(X.prove, 11, 0), { cls: 'big wrap', delay: 1.4 });
+        ctx.tag('<b>Break</b><small>safe even when the record keeper fails</small>', new THREE.Vector3(X.break, 11, 0), { tone: 'bad', cls: 'big wrap', delay: 1.8 });
       }
       if (stepId === 'welcome') {
         ctx.tag('Meet the colleague', new THREE.Vector3(X.colleague, 7, 0), { tone: 'gold', cls: 'big', delay: 0.5 });
         ctx.tag('Know', new THREE.Vector3(X.know, 7, 0), { tone: 'good', cls: 'big', delay: 0.8 });
         ctx.tag('Do', new THREE.Vector3(X.do, 7, 0), { tone: 'warn', cls: 'big', delay: 1.1 });
         ctx.tag('Prove', new THREE.Vector3(X.prove, 7, 0), { cls: 'big', delay: 1.4 });
+        ctx.tag('What if it breaks?', new THREE.Vector3(X.break, 7, 0), { tone: 'bad', cls: 'big', delay: 1.8 });
       }
     },
     choose() {},

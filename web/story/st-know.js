@@ -327,11 +327,12 @@ export function buildKnow(ctx) {
     if (which === 'block') {
       const file = sheet({ w: 2.0, h: 2.6, title: 'CONFIDENTIAL', lines: ['Highest handling level. Not for any outside party.'], tone: C.bad, dashed: true });
       file.position.set(-3.0, 3.4, 1.6); temp.add(file); file.scale.setScalar(0.001); await s.scale(file, 1, 0.4, ease.back);
-      say('<b>Highly confidential file</b>', file, { offset: [0, 1.6, 0], tone: 'bad' });
+      const fileTag = say('<b>Highly confidential file</b>', file, { offset: [0, 1.6, 0], tone: 'bad' });
       await s.glide(file, [filter.position.x - 1.2, 2.9, 0.8], 1.0, 0.6);
       ringMat.color.set(C.bad); ringMat.emissive.set(C.bad); ctx.flash('#ff6b6b');
       ringPulse(s, temp, filter.position.clone(), C.bad, { rotY: GATE_ROT, to: 3.4 }).catch(() => {});
       await s.glide(file, [-3.0, 3.4, 1.6], 0.8, 0.5);
+      ctx.labels.remove(fileTag);
       shards(s, temp, file.position.clone(), C.bad); temp.remove(file);
       const st = stampMesh('STOPPED', C.bad); st.position.set(0.8, 4.9, 1.4); st.scale.setScalar(2.4); temp.add(st);
       await s.scale(st, 1, 0.45, ease.bounce);
@@ -341,17 +342,19 @@ export function buildKnow(ctx) {
     ringMat.color.set(C.cyan); ringMat.emissive.set(C.cyan);
     const out = make(mk('QUESTION · REAL DETAILS', lines2(pv.before), '#ffd89a'), originals, C.amber);
     out.position.set(-2.6, 3.6, 2.0); temp.add(out); out.scale.setScalar(0.001); await s.scale(out, 1, 0.45, ease.back);
-    say('<b>Real names and numbers</b>', out, { offset: [0, 1.4, 0], tone: 'warn' });
+    const realTag = say('<b>Real names and numbers</b>', out, { offset: [0, 1.4, 0], tone: 'warn' });
     await s.wait(0.9);
     await s.glide(out, [filter.position.x - 0.6, 3.0, 0.9], 1.0, 0.4);
     ringPulse(s, temp, filter.position.clone(), C.cyan, { rotY: GATE_ROT, to: 3.2 }).catch(() => {});
+    ctx.labels.remove(realTag);                 // the words change at the gate, so this label ends here
     await s.scale(out, 0.85, 0.2);
     out.userData.redraw(drawText(mk('QUESTION · WHAT THE PROVIDER SEES', lines2(pv.after), '#9fe4ff'), tokens, C.cyan));
     await s.scale(out, 1, 0.25, ease.back);
     ctx.setCounters([{ label: 'Details sent out', value: 0 }]);
     await s.glide(out, [cloud.position.x - 2.6, 3.4, 0.9], 1.1, 0.5);
-    say(`<b>${pairs.length} details replaced</b><small>placeholders only</small>`, out, { offset: [0, 1.5, 0], tone: '' });
+    const replacedTag = say(`<b>${pairs.length} details replaced</b><small>placeholders only</small>`, out, { offset: [0, 1.5, 0], tone: '' });
     await s.wait(0.8);
+    ctx.labels.remove(replacedTag);
     temp.remove(out);
     const back = make(mk('REPLY · FROM THE PROVIDER', [firstSentence(pv.reply_out)], '#9fe4ff'), tokens, C.cyan);
     back.position.set(cloud.position.x - 2.6, 3.4, 0.9); temp.add(back);

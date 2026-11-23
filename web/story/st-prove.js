@@ -190,8 +190,8 @@ export function buildProve(ctx) {
     setScan(C.bad); ctx.flash('#ff6b6b');
     ctx.labels.remove(editTag);
     const st = stampMesh('SEAL BROKEN', C.bad, { w: 4.6 }); st.position.set(bx, 4.3, 1.2); st.scale.setScalar(2.2); temp.add(st); await s.scale(st, 1, 0.5, ease.bounce);
-    say(`<b>Detected at entry #${t.broken_at}</b><small>the checker stops at the first mismatch</small>`, at(bx, 5.9), { tone: 'bad', cls: 'big', delay: 0.3 });
-    say(`<small>“${t.error}”</small>`, at(bx, 7.5), { tone: 'bad', cls: 'wrap', delay: 0.7 });
+    say(`<b>Detected at entry #${t.broken_at}</b><small>the checker stops at the first mismatch</small>`, at(bx, 5.6), { tone: 'bad', cls: 'big', delay: 0.3 });
+    say(`<small>“${t.error}”</small>`, at(bx, 7.4), { tone: 'bad', cls: 'wrap', delay: 0.7 });
   }
 
   async function enterRebuild(s) {
@@ -226,7 +226,7 @@ export function buildProve(ctx) {
 
   // ------------------------------------------------------------ interface
   const cams = {
-    'prove-receipt': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 2.4, arc: 3, fit: 10.8 },
+    'prove-receipt': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 2.4, arc: 3, fit: 11.6 },
     'prove-verify': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 1.6, arc: 1, fit: 10.8 },
     'prove-tamper': { pos: [0.2, 6.5, 24], look: [0, 2.4, 0], dur: 1.6, arc: 1, fit: 10.8 },
     'prove-rebuild': { pos: [0.2, 6.5, 24], look: [0, 2.6, 0], dur: 1.6, arc: 1, fit: 10.8 },

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 import tempfile
 from collections import Counter
@@ -38,71 +39,30 @@ from kognita.vocabulary import CheckResult, Classification
 
 from eastwind import __version__ as eastwind_version
 from eastwind.agents.data import PRODUCTS, ROLE_FIELDS
-from eastwind.agents.workflows import (APPROVER, budget, client_review, egress, kill_switch, rebalance,
+from eastwind.agents.workflows import (APPROVER, budget, client_review, degraded, egress, kill_switch, rebalance,
                                        replay, research, suitability)
 from eastwind.cli import _echo_model
 from eastwind.pack import AGENT_NAME, AGENT_OWNER, CLIENTS, KNOWLEDGE
 from eastwind.pwm import LEVELS, P, create_demo_store, export_graph, validate_graph
 from eastwind.run import run_scenario
+from eastwind.words import (CAPABILITIES, CAPABILITY_GROUPS, DESKS, EVENT_WORDS, FIELD_LABELS, FIELD_PHRASES, LEVEL_WORDS, OUTCOME_WORDS, PWM_NODES,
+                            REASONS, ROLE_WORDS, TOOL_WORDS)
 
 SCHEMA = 1
 
-# ---------------------------------------------------------------------------
-# Plain-English vocabulary. Raw codes stay in each step's ``mechanics``.
-# ---------------------------------------------------------------------------
-
-OUTCOME_WORDS = {"ALLOW": "Allowed", "DENY": "Blocked", "HUMAN_APPROVAL": "Waiting for a person",
-                 "ESCALATE": "Sent to a person"}
-
-FIELD_LABELS = {"name": "Name", "email": "Email", "risk_profile": "Risk profile",
-                "investment_horizon_years": "Investment horizon", "tax_identifier": "Tax ID"}
-
-FIELD_PHRASES = {"name": "name", "email": "email", "risk_profile": "risk profile",
-                 "investment_horizon_years": "investment horizon", "tax_identifier": "tax ID",
-                 "account": "account number"}
-
-DESKS = {"SG": "Singapore", "AE": "Dubai", "HK": "Hong Kong"}
-
-TOOL_WORDS = {"client_profile": "Read the client profile", "account_holdings": "Read the account holdings",
-              "product_profile": "Read the product", "summarize_review": "Summarize the review"}
-
-ROLE_WORDS = {"relationship_manager": "Relationship manager", "agent": "AI colleague", "visitor": "Visitor"}
-
-LEVEL_WORDS = ("Look things up", "Explain", "Recommend", "Draft", "Act after approval",
-               "Act within limits", "Act freely")
-
-#: Why a check failed, in words a director would use. Keyed by regime, then by check id.
-REASONS = {
-    "HK_SFC": "Hong Kong securities rules: this client lives outside the permitted countries.",
-    "DIFC_DFSA": "Dubai financial centre rules: this client lives outside the permitted countries.",
-    "PRODUCT_GOVERNANCE": "Product rules: this product is only for accredited investors, and this client is not one.",
-}  # S1-IDENTITY is built from the data in _reason: it names the two desks.
-
-#: Evidence record types, as a person would name them, and a color group for the 3D chain.
-EVENT_WORDS = {
-    "POLICY_DECISION": ("Decision", "decision"), "TOOL_CALL": ("Tool used", "work"),
-    "RETRIEVAL": ("Documents fetched", "work"), "MODEL_CALL": ("AI model called", "work"),
-    "APPROVAL": ("Human approval", "human"), "INTERVENTION": ("Human step-in or stop", "human"),
-    "EGRESS": ("Outbound data check", "privacy"), "INTERACTION": ("Client conversation opened", "setup"),
-    "POLICY_CHANGE": ("Setup or rule change", "setup"), "CLAIM": ("Statement recorded", "work"),
-    "FINAL_DECISION": ("Final outcome", "final"),
+#: Presenter paths. A path keeps some steps, in story order; None keeps them all.
+PATHS = {
+    "quick": ("Quick", ("welcome", "colleague-hire", "know-border", "do-approval", "prove-tamper", "recap")),
+    "standard": ("Standard", ("welcome", "colleague-hire", "colleague-passport", "know-roles", "know-border", "know-privacy",
+                              "do-authority", "do-approval", "do-stop", "prove-receipt", "prove-tamper", "break-outage", "recap")),
+    "full": ("Full tour", None),
 }
+#: A step takes about this long to present, plus a little for each choice the presenter makes.
+SECONDS_PER_STEP, SECONDS_PER_CHOICE = 25, 15
 
-PWM_NODES = (  # (id, PWM class, label, ring)
-    ("usecase", "AIUseCase", "AI use case", 0),
-    ("business", "BusinessOwner", "Business owner", 1),
-    ("technology", "TechnologyOwner", "Tech owner", 1),
-    ("control", "DesignatedControlFunction", "Control", 1),
-    ("risk", "RiskMaterialityAssessment", "Risk rating", 1),
-    ("agent", "AIAgent", "AI agent", 1),
-    ("model", "AIModel", "AI model", 2),
-    ("providers", "ModelProvider", "Providers", 2),
-    ("identity", "WorkloadIdentity", "Identity", 2),
-    ("tools", "Tool", "Tools", 2),
-    ("source", "ApprovedSource", "Source", 2),
-    ("retention", "RetentionPolicy", "Retention", 2),
-    ("evidence", "EvidenceRecord", "Evidence", 2),
-)
+# ---------------------------------------------------------------------------
+# Plain-English vocabulary lives in eastwind.words, shared with the console. Raw codes stay in each step's ``mechanics``.
+# ---------------------------------------------------------------------------
 
 COMMANDS = {
     "roles": "uv run eastwind workflow client-review --role agent",
@@ -118,6 +78,7 @@ COMMANDS = {
     "tamper": "uv run eastwind evidence tamper --file evidence.json -o edited.json",
     "replay": "uv run eastwind workflow replay",
     "pwm": "uv run eastwind pwm export -o pwm.ttl && uv run eastwind pwm validate pwm.ttl",
+    "degraded": "uv run eastwind workflow degraded",
 }
 
 
@@ -222,6 +183,11 @@ def _pwm_view(root: Path) -> dict[str, Any]:
             "max_autonomy": entry.maximum_autonomy, "ontology": str(P)}
 
 
+def _console_deployed() -> bool:
+    """Whether the console sits beside the walkthrough. A Vercel build deploys it; a local static build does not."""
+    return bool(os.environ.get("VERCEL") or os.environ.get("EASTWIND_CONSOLE"))
+
+
 def capture_story(root: Path | None = None) -> dict[str, Any]:
     """Run Kognita on one synthetic store and return what the walkthrough may claim."""
     if root is None:
@@ -245,6 +211,7 @@ def capture_story(root: Path | None = None) -> dict[str, Any]:
     stopped = _workflow(kill_switch(db))
     spend = _workflow(budget(db))
     replayed = _workflow(replay(db))
+    outage = _workflow(degraded(root / "degraded.db"))["facts"]
 
     engine = make_engine(db)
     try:
@@ -319,11 +286,22 @@ def capture_story(root: Path | None = None) -> dict[str, Any]:
              "the replayed decision must still be allowed")
     _require(tamper["broken_at"] == tamper["sequence"], "the tamper check should fail at the edited record")
     _require(colleague["level"] == 0, "the colleague's registered independence level changed")
+    # The outage drill: Kognita's own description of the two modes is the contract (FailureMode).
+    _require(outage["fail_closed_forwarded"] == 0 and outage["fail_closed_status"] >= 500,
+             "strict mode must refuse when the record keeper is down")
+    _require(outage["degraded_local_forwarded"] == 1 and outage["degraded_local_status"] == 200,
+             "degraded mode must carry on for a local, low-risk call")
+    _require(outage["degraded_remote_outcome"] == "DENY" and outage["degraded_remote_forwarded"] == 0,
+             "degraded mode must refuse an outside provider")
+    _require(outage["degraded_c2_outcome"] == "DENY" and outage["degraded_c2_forwarded"] == 0,
+             "degraded mode must refuse content that identifies a client")
+    _require(outage["degraded_chain"] is True, "the record must still verify after the drill")
 
     return {
         "schema": SCHEMA,
         "meta": {"built_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-                 "eastwind": eastwind_version, "kognita": kognita_version, "synthetic": True},
+                 "eastwind": eastwind_version, "kognita": kognita_version, "synthetic": True,
+                 "console": _console_deployed()},
         "colleague": colleague, "pwm": _pwm_view(root), "roles": roles, "borders": borders,
         "sources": {"approved": approved, "unapproved": unapproved,
                     "citation": unapproved["steps"][-1]["data"]["citation"]},
@@ -340,6 +318,11 @@ def capture_story(root: Path | None = None) -> dict[str, Any]:
                   "tamper": tamper},
         "replay": {"request_id": replayed["facts"]["request_id"], "outcome": replayed["facts"]["outcome"],
                    "questions": reconstruction["questions"], "chain": reconstruction["chain"]},
+        "outage": {"strict": {"status": outage["fail_closed_status"], "passed_on": outage["fail_closed_forwarded"]},
+                   "local": {"status": outage["degraded_local_status"], "passed_on": outage["degraded_local_forwarded"]},
+                   "remote": {"outcome": outage["degraded_remote_outcome"], "passed_on": outage["degraded_remote_forwarded"]},
+                   "identifying": {"outcome": outage["degraded_c2_outcome"], "passed_on": outage["degraded_c2_forwarded"]},
+                   "chain_ok": outage["degraded_chain"]},
     }
 
 
@@ -629,6 +612,35 @@ def build_story(data: dict[str, Any]) -> dict[str, Any]:
                                      ["Chain intact", str(data["replay"]["chain"]["intact"])]]
                                     + [["Not recorded", q] for q in unanswered]}},
         ]},
+        {"id": "break", "name": "What if it breaks?", "tag": "BREAK", "steps": [
+            {"id": "break-outage", "title": "When the record keeper is down",
+             "point": "Every decision must be recorded. If it cannot be, the bank has chosen in advance: refuse "
+                      "everything, or carry on only where nothing that names a client can leave.",
+             "say": "This is the question an operations director asks. In strict mode nothing moves without a "
+                    "record. In degraded mode only a local model, with no client details, may carry on, and the "
+                    "record is written once the keeper is back. Nothing ever goes to an outside provider.",
+             "choices": [
+                 {"id": "strict", "label": "Strict mode",
+                  "result": "Refused. Nothing was passed on while the record keeper was down.", "tone": "bad"},
+                 {"id": "local", "label": "Degraded: local, low risk",
+                  "result": "Carried on with a local model. It is recorded once the keeper is back, and the record "
+                            "still checks out.", "tone": "good"},
+                 {"id": "remote", "label": "Degraded: outside provider",
+                  "result": "Refused. Degraded mode never lets anything go outside.", "tone": "bad"},
+                 {"id": "identifying", "label": "Degraded: names a client",
+                  "result": "Refused. Content that identifies a client does not pass, even to a local model.",
+                  "tone": "bad"}],
+             "mechanics": {"command": COMMANDS["degraded"],
+                           "facts": [["Strict mode", f"refused · status {data['outage']['strict']['status']} · "
+                                                     f"passed on {data['outage']['strict']['passed_on']}"],
+                                     ["Degraded, local", f"status {data['outage']['local']['status']} · "
+                                                         f"passed on {data['outage']['local']['passed_on']}"],
+                                     ["Degraded, outside provider", f"{data['outage']['remote']['outcome']} · "
+                                                                    f"passed on {data['outage']['remote']['passed_on']}"],
+                                     ["Degraded, identifying", f"{data['outage']['identifying']['outcome']} · "
+                                                               f"passed on {data['outage']['identifying']['passed_on']}"],
+                                     ["Record verifies afterwards", str(data["outage"]["chain_ok"])]]}},
+        ]},
         {"id": "recap", "name": "Recap", "tag": "", "steps": [{
             "id": "recap", "title": "Know. Do. Prove.",
             "point": "An AI colleague can be useful and still be governed: trusted context in, controlled "
@@ -644,10 +656,108 @@ def build_story(data: dict[str, Any]) -> dict[str, Any]:
                                     ["Record entries", str(chain["count"])]]},
         }]},
     ]
-    return {"schema": SCHEMA, "meta": data["meta"], "chapters": chapters}
+    # The map of everything else: needs every other step to exist, so it is built last.
+    ids = {s["id"]: s["title"] for c in chapters for s in c["steps"]}
+    chapters.insert(len(chapters) - 1, {"id": "more", "name": "Everything else it can do", "tag": "MORE", "steps": [{
+        "id": "more-map", "title": "Everything else it can do", "layout": "map",
+        "point": "You have seen a handful of controls. This is the whole map: what you saw, where else to see it, "
+                 "and what is part of Kognita but not demonstrated here.",
+        "say": "Be straight about the edges. The first group you have just watched. The next shows where each of "
+               "the others can be seen. The last are real parts of Kognita that this demo does not demonstrate.",
+        "groups": [[gid, label] for gid, label in CAPABILITY_GROUPS.items()],
+        "capabilities": _capabilities(ids),
+        "mechanics": {"command": "uv run eastwind showcase all --db /tmp/eastwind-showcase",
+                      "facts": [["Capabilities listed", str(len(CAPABILITIES))],
+                                ["Shown in the walkthrough", str(sum(1 for c in CAPABILITIES if c[4][0] == "story"))],
+                                ["Not demonstrated here", str(sum(1 for c in CAPABILITIES if c[4][0] == "none"))]]},
+    }]})
+    paths = _paths(chapters)
+    welcome = chapters[0]["steps"][0]
+    welcome["choices"] = [{"id": p["id"], "path": p["id"], "tone": "good",
+                           "label": f"{p['label']} · about {p['minutes']} min",
+                           "result": f"{p['label']}: {len(p['steps'])} steps, about {p['minutes']} minutes. "
+                                     "Press Start, then use the arrow keys."} for p in paths]
+    return {"schema": SCHEMA, "meta": data["meta"], "chapters": chapters, "paths": paths, "defaultPath": "full"}
+
+
+def _capabilities(step_titles: dict[str, str]) -> list[dict[str, Any]]:
+    """One tile per capability, saying honestly where it can be seen. Every story link must exist."""
+    items = []
+    for cid, group, title, promise, primary, secondary in CAPABILITIES:
+        see: list[dict[str, str]] = []
+        for kind_ref in (primary, secondary):
+            if not kind_ref:
+                continue
+            kind, ref = kind_ref
+            if kind == "story":
+                _require(ref in step_titles, f"capability {cid!r} points at a step that does not exist: {ref}")
+                see.append({"kind": "story", "step": ref, "label": step_titles[ref]})
+            elif kind == "console":
+                see.append({"kind": "console", "path": ref})
+            elif kind == "cli":
+                see.append({"kind": "cli", "command": ref})
+        items.append({"id": cid, "group": group, "title": title, "promise": promise, "see": see or [{"kind": "none"}]})
+    return items
+
+
+def _paths(chapters: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The presenter paths, with a time estimate worked out from the steps each one keeps."""
+    steps = [s for c in chapters for s in c["steps"]]
+    order = [s["id"] for s in steps]
+    out = []
+    for pid, (label, wanted) in PATHS.items():
+        _require(wanted is None or set(wanted) <= set(order), f"path {pid!r} names a step that does not exist")
+        keep = [i for i in order if wanted is None or i in wanted]
+        seconds = sum(SECONDS_PER_STEP + SECONDS_PER_CHOICE * len(s.get("choices", [])) for s in steps if s["id"] in keep)
+        out.append({"id": pid, "label": label, "steps": keep, "seconds": seconds, "minutes": max(1, round(seconds / 60))})
+    return out
+
+
+def onepager_facts(data: dict[str, Any], story: dict[str, Any]) -> dict[str, Any]:
+    """The words and numbers for the printable one-pager. Every figure comes from the captured run."""
+    deny, allow = data["borders"]["deny"], data["borders"]["allow"]
+    chain, calls = data["chain"], data["budget"]["calls"]
+    unanswered = [q for q in data["replay"]["questions"] if q["answer"] == "not recorded"]
+    ran = sum(1 for c in calls if c["allowed"])
+    proposal = f"S${data['rebalance']['proposal']['amount']:,}"
+    outage = data["outage"]
+    caps = next(st for c in story["chapters"] for st in c["steps"] if st["id"] == "more-map")["capabilities"]
+    shown = sum(1 for c in caps if any(s["kind"] in ("story", "console", "cli") for s in c["see"]))
+    return {
+        "numbers": [
+            (str(len(deny["failed"])), f"separate reasons refused a {_desk(deny['principal'])} request, before anything was read"),
+            (str(allow["egress"]["spans"]), "client details swapped for placeholders before reaching an outside provider"),
+            (str(chain["count"]), "entries in the sealed record, and every seal matches"),
+            (f"#{chain['tamper']['sequence']}", "the one edited entry, found exactly"),
+        ],
+        "columns": [
+            {"id": "know", "kicker": "Know", "question": "What may it see?", "points": [
+                f"A request from the {_desk(deny['principal'])} desk failed {len(deny['failed'])} of {deny['total']} checks and nothing was read.",
+                f"{len(allow['withheld'])} confidential note stayed out of reach, and an unapproved source was refused.",
+                "In this run, names, emails and account numbers did not reach the outside provider."]},
+            {"id": "do", "kicker": "Do", "question": "What may it do?", "points": [
+                f"A {proposal} trade proposal paused for a named person. No trade is placed in this demo.",
+                "An emergency stop withheld a proposal that had already been approved.",
+                f"A task that needed {len(calls)} calls was stopped after {ran}."]},
+            {"id": "prove", "kicker": "Prove", "question": "What can we show?", "points": [
+                f"A sealed record of {chain['count']} entries, checkable by anyone with the file.",
+                f"Edit entry #{chain['tamper']['sequence']} and the checker says exactly where it broke.",
+                f"{len(unanswered)} of {len(data['replay']['questions'])} questions about one interaction were marked not recorded: gaps are shown, not hidden."]},
+        ],
+        "break": (f"With the record keeper down, strict mode passed on {outage['strict']['passed_on']} calls. Degraded mode passed on "
+                  f"{outage['local']['passed_on']}, a local low-risk question, and refused the outside provider and the question that names a client."),
+        "capabilities": {"total": len(caps), "shown": shown, "not_shown": len(caps) - shown,
+                         "groups": [[label, [c["title"] for c in caps if c["group"] == gid]] for gid, label in CAPABILITY_GROUPS.items()]},
+    }
+
+
+def site_payload() -> tuple[dict[str, Any], dict[str, Any], str]:
+    """Capture and build once: the data, the story, and the JSON the walkthrough loads."""
+    data = capture_story()
+    story = build_story(data)
+    return data, story, json.dumps({"data": data, "story": story}, indent=1, sort_keys=False)
 
 
 def story_json() -> str:
-    """Capture and build, as the JSON the walkthrough loads."""
-    data = capture_story()
-    return json.dumps({"data": data, "story": build_story(data)}, indent=1, sort_keys=False)
+    """The JSON the walkthrough loads."""
+    return site_payload()[2]

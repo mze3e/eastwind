@@ -17,7 +17,7 @@ from kognita.usecases import load_register
 from kognita.registry import set_kill_switch
 from kognita.sources import Source, check_grounding, register_source, _load
 
-from eastwind.agents.data import ACCOUNT, CLIENT, MANDATE, PRODUCTS, ROLE_FIELDS, SOURCE, SOURCES
+from eastwind.agents.data import ACCOUNT, CLIENT, MANDATE, PRODUCTS, PROPOSAL_AMOUNT, ROLE_FIELDS, SOURCE, SOURCES
 from eastwind.llm import MockClient
 from eastwind.pack import (AGENT_NAME, AGENT_OWNER, CLIENTS, INSTRUMENTS, PURPOSES,
                            EastwindPack, _access, client_envelope, seed_store)
@@ -147,7 +147,7 @@ class WealthAgent:
             product_id = args.get("product_id", "INS-MMF")
             if not _suitable(product_id):
                 return json.dumps({"denied": True, "reason": "product exceeds the mandate risk ceiling"})
-            proposal = {"client_id": CLIENT["id"], "product_id": product_id, "amount": 5000,
+            proposal = {"client_id": CLIENT["id"], "product_id": product_id, "amount": PROPOSAL_AMOUNT,
                         "status": "proposal", "approver": APPROVER}
             self.proposals.append(proposal)
             return json.dumps(proposal, sort_keys=True)

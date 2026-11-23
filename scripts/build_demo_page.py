@@ -339,7 +339,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
     .btn:hover {{ background: rgba(255,255,255,.12); }}
     .btn.primary {{ background: var(--gold); border-color: var(--gold); color: #0b1626; font-weight: 800; font-size: 1.08rem; padding: .95rem 1.7rem; box-shadow: 0 10px 34px rgba(229,181,103,.28); }}
     .btn.primary:hover {{ filter: brightness(1.08); background: var(--gold); }}
-    .keys {{ margin: 0; color: var(--muted); font-size: .85rem; }}
+    .keys {{ margin: 0; color: var(--muted); font-size: .85rem; }} .keys.more {{ margin-top: .5rem; }}
     kbd {{ font: 700 .75rem var(--mono); padding: .1rem .4rem; border-radius: 6px; background: rgba(255,255,255,.1); }}
     .hero .shot {{ border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 70px rgba(0,0,0,.5); background: var(--deep); aspect-ratio: 16 / 9; }}
     .hero .shot img, .card .shot img {{ display: block; width: 100%; height: 100%; object-fit: cover; }}
@@ -408,6 +408,7 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
           <a class="btn" href="/admin/">Open the live admin console</a>
         </div>
         <p class="keys">Presenting? <kbd>&larr;</kbd> <kbd>&rarr;</kbd> to move, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to choose, <kbd>N</kbd> talk track, <kbd>M</kbd> mechanics, <kbd>F</kbd> full screen.</p>
+        <p class="keys more"><a href="/story/?path=quick">The 4-minute version</a> · <a href="/story/#more-map">Everything else it can do</a> · <a href="/onepager/">Print the one-pager</a></p>
       </div>
       <div class="shot">{hero_img}</div>
     </header>
@@ -486,6 +487,92 @@ def render_html(demo: DemoTranscripts, *, built_at: datetime) -> str:
 """
 
 
+def _still(name: str, alt: str) -> str:
+    """An <img> for a preview still, only if it exists."""
+    if not (WEB / "story" / "previews" / f"{name}.jpg").is_file():
+        return ""
+    return f'<img src="/story/previews/{name}.jpg" alt="{_esc(alt)}" width="1280" height="720">'
+
+
+ONEPAGER_CSS = """
+  :root { --ink: #11202f; --muted: #50606f; --line: #d5dde5; --gold: #b07a1e; --know: #0a7894; --do: #b36b00; --prove: #2f55c4; --bad: #b3261e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9eef3; color: var(--ink); font: 10.5pt/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .sheet { width: 210mm; min-height: 297mm; margin: 12px auto; padding: 9mm 11mm; background: #fff; box-shadow: 0 6px 30px rgba(0,0,0,.18); }
+  .tag { margin: 0; font-size: 8.5pt; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); } .tag b { color: var(--gold); }
+  h1 { font: 700 22pt/1.08 Georgia, "Iowan Old Style", Palatino, serif; margin: 2mm 0 1.5mm; }
+  .lede { font-size: 11pt; margin: 0 0 4mm; max-width: 165mm; color: #26394b; }
+  .numbers { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 0 0 4mm; padding: 0; }
+  .numbers li { border-top: 3px solid var(--gold); padding-top: 2mm; } .numbers b { display: block; font: 700 20pt/1 Georgia, serif; }
+  .numbers span { font-size: 8.5pt; color: var(--muted); display: block; margin-top: 1mm; }
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin: 0 0 4mm; }
+  .col .shot { aspect-ratio: 21 / 9; background: #0b1626; border-radius: 3mm; overflow: hidden; } .col img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .kick { margin: 2.5mm 0 0; font-size: 8.5pt; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .know .kick { color: var(--know); } .do .kick { color: var(--do); } .prove .kick { color: var(--prove); }
+  .col h2 { font: 700 14pt/1.15 Georgia, serif; margin: 1mm 0 1.5mm; } .col ul { margin: 0; padding-left: 4.2mm; font-size: 9pt; } .col li { margin-bottom: 1mm; }
+  .break { border: 1px solid var(--line); border-left: 4px solid var(--bad); border-radius: 2mm; padding: 2mm 4mm; margin: 0 0 4mm; font-size: 9.5pt; } .break b { color: var(--bad); }
+  h3 { font-size: 9pt; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 1.5mm; }
+  .more p { margin: 0 0 1mm; font-size: 8pt; color: #33475a; } .more b { color: var(--ink); }
+  .honest { margin-top: 3mm; border-top: 1px solid var(--line); padding-top: 2mm; font-size: 8.5pt; color: #33475a; }
+  .honest ul { margin: 1mm 0 0; padding-left: 4.2mm; }
+  footer { margin-top: 3mm; font-size: 8pt; color: var(--muted); }
+  @page { size: A4; margin: 0; }
+  @media print { body { background: #fff; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: 0; } }
+  /* Screens only: an A4 page is 794px wide, so without "screen" this would also reshape the printout. */
+  @media screen and (max-width: 800px) { .sheet { width: auto; margin: 0; } .cols, .numbers { grid-template-columns: 1fr 1fr; } }
+"""
+
+
+def render_onepager(facts: dict, *, built_at: datetime) -> str:
+    """A print-ready sheet: light, one page, no script. Every number comes from the captured run."""
+    stamp = built_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    numbers = "".join(f"<li><b>{_esc(n)}</b><span>{_esc(t)}</span></li>" for n, t in facts["numbers"])
+    alts = {"know": "A request from the wrong desk is blocked at the gate",
+            "do": "An approved proposal is withheld when the emergency stop is hit",
+            "prove": "One edited entry in the sealed record is found"}
+    columns = "".join(
+        f'<section class="col {c["id"]}"><div class="shot">{_still(c["id"], alts[c["id"]])}</div>'
+        f'<p class="kick">{_esc(c["kicker"])}</p><h2>{_esc(c["question"])}</h2>'
+        f'<ul>{"".join(f"<li>{_esc(p)}</li>" for p in c["points"])}</ul></section>'
+        for c in facts["columns"])
+    caps = facts["capabilities"]
+    groups = "".join(f'<p><b>{_esc(label)}.</b> {_esc("; ".join(titles))}.</p>' for label, titles in caps["groups"] if titles)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One page: an AI colleague that can show its work - Eastwind Private</title>
+<meta name="description" content="A one-page summary of the Eastwind Private walkthrough, with the figures from the run it replays. Fiction, synthetic data.">
+<style>{ONEPAGER_CSS}</style>
+</head>
+<body>
+<article class="sheet">
+  <p class="tag"><b>Eastwind Private</b> · fiction · synthetic data</p>
+  <h1>An AI colleague that can show its work</h1>
+  <p class="lede">One AI assistant at a private bank, and how it is kept safe: what it may see, what it may do, and the proof it leaves behind.</p>
+  <ul class="numbers" aria-label="The run in four numbers">{numbers}</ul>
+  <div class="cols">{columns}</div>
+  <p class="break"><b>What if it breaks?</b> {_esc(facts["break"])}</p>
+  <section class="more" aria-label="Everything else it can do">
+    <h3>Everything else it can do: {caps["total"]} capabilities, {caps["shown"]} shown or runnable here, {caps["not_shown"]} part of Kognita with no demonstration here</h3>
+    {groups}
+  </section>
+  <section class="honest" aria-label="What is real here">
+    <strong>What is real here.</strong>
+    <ul>
+      <li>The bank, its clients and every citation are invented. The data is synthetic.</li>
+      <li>The AI model is an offline stand-in. No provider is contacted and no key is used.</li>
+      <li>The decisions are real Kognita results, replayed from a run made when this page was built.</li>
+    </ul>
+  </section>
+  <footer>Built {_esc(stamp)} from eastwind {_esc(eastwind_version)} and kognita {_esc(kognita_version)}. The 3D walkthrough is at <a href="/story/">/story/</a>. To save this page as a PDF, use your browser's Print command.</footer>
+</article>
+</body>
+</html>
+"""
+
+
 def build_page(output: Path) -> str:
     """Build the landing page only. This is what the offline tests check."""
     demo = capture_demo()
@@ -503,24 +590,27 @@ def build_page(output: Path) -> str:
 
 #: Files the published site must contain, relative to its root.
 SITE_FILES = (
-    "index.html", "story/index.html", "story/story.css", "story/app.js", "story/data.json",
+    "index.html", "onepager/index.html", "story/index.html", "story/story.css", "story/app.js", "story/data.json",
     "vendor/three/three.module.js", "vendor/three/three.core.js", "vendor/three/LICENSE",
 )
 
 
 def build_site(root: Path) -> None:
     """Landing page, 3D walkthrough, vendored three.js, and the data the walkthrough replays."""
-    from eastwind.story import story_json
+    from eastwind.story import onepager_facts, site_payload
 
     root = root if root.is_absolute() else REPO_ROOT / root
     build_page(root / "index.html")
     for source, target in ((WEB / "story", root / "story"), (WEB / "vendor", root / "vendor")):
         shutil.copytree(source, target, dirs_exist_ok=True, ignore=shutil.ignore_patterns("data.json"))
-    payload = story_json()
+    data, story, payload = site_payload()
+    onepager = render_onepager(onepager_facts(data, story), built_at=datetime.now(timezone.utc))
     secret = os.environ.get("OPENAI_API_KEY", "")
-    if secret and secret in payload:
+    if secret and (secret in payload or secret in onepager):
         raise RuntimeError("the story data contains OPENAI_API_KEY")
     (root / "story" / "data.json").write_text(payload, encoding="utf-8")
+    (root / "onepager").mkdir(parents=True, exist_ok=True)
+    (root / "onepager" / "index.html").write_text(onepager, encoding="utf-8")
     missing = [name for name in SITE_FILES if not (root / name).is_file()]
     if missing:
         raise RuntimeError(f"the site is missing: {', '.join(missing)}")
