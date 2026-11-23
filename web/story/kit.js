@@ -58,6 +58,19 @@ export function glowSprite(color, size = 2, opacity = 0.8) {
 }
 
 let blobTex;
+/**
+ * Flat things printed on a floor (its pattern, rings, glow, shadows) sit a few hundredths of a unit apart. From far
+ * away a graphics card cannot tell surfaces that close apart, so which one shows flips from frame to frame and the
+ * floor shimmers. Each layer is therefore pushed forward in depth by its rank and drawn in a fixed order, which
+ * makes the result the same on every card.
+ */
+export function decal(mesh, layer) {
+  const m = mesh.material;
+  m.polygonOffset = true; m.polygonOffsetFactor = -layer; m.polygonOffsetUnits = -layer;
+  mesh.renderOrder = layer;
+  return mesh;
+}
+
 export function shadowBlob(radius = 1, opacity = 0.45) {
   if (!blobTex) {
     const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -69,8 +82,8 @@ export function shadowBlob(radius = 1, opacity = 0.45) {
   }
   const m = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2),
     new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, opacity, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.y = 0.02;
-  return m;
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.09;
+  return decal(m, 4);
 }
 
 // ------------------------------------------------------------ canvas panels
@@ -193,12 +206,12 @@ export function platform(radius, color = C.gold, label) {
   for (const r of [60, 120, 180, 235]) { cg.beginPath(); cg.arc(256, 256, r, 0, 7); cg.stroke(); }
   for (let i = 0; i < 72; i++) { const a = (i / 72) * Math.PI * 2; cg.beginPath(); cg.moveTo(256 + Math.cos(a) * 240, 256 + Math.sin(a) * 240); cg.lineTo(256 + Math.cos(a) * 252, 256 + Math.sin(a) * 252); cg.stroke(); }
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const top = new THREE.Mesh(new THREE.CircleGeometry(radius, 96), new THREE.MeshBasicMaterial({ map: tex })); top.rotation.x = -Math.PI / 2; top.position.y = 0.005;
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.07, 8, 96), emissive(color, 1.4)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.01;
-  const inner = new THREE.Mesh(new THREE.RingGeometry(radius * 0.55, radius * 0.56, 96), basic(color, 0.3)); inner.rotation.x = -Math.PI / 2; inner.position.y = 0.012;
+  const top = new THREE.Mesh(new THREE.CircleGeometry(radius, 96), new THREE.MeshBasicMaterial({ map: tex })); top.rotation.x = -Math.PI / 2; top.position.y = 0.03; decal(top, 1);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.07, 8, 96), emissive(color, 1.4)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.08;
+  const inner = new THREE.Mesh(new THREE.RingGeometry(radius * 0.55, radius * 0.56, 96), basic(color, 0.3)); inner.rotation.x = -Math.PI / 2; inner.position.y = 0.05; decal(inner, 2);
   // A flat glow on the floor. A camera-facing sprite here would be sliced by the floor plane.
   const halo = new THREE.Mesh(new THREE.CircleGeometry(radius * 1.15, 64), new THREE.MeshBasicMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending }));
-  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.02;
+  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.07; decal(halo, 3);
   g.add(disc, top, rim, inner, halo);
   g.userData = { rim, inner, halo };
   return g;

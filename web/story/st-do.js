@@ -3,7 +3,7 @@
 import { THREE, ease, reducedMotion } from './engine.js';
 import {
   C, css, FONT, robot, person, platform, gate, packet, panel, sheet, stampMesh, icon, slab,
-  roundRect, fit, glowSprite, ringPulse, shards, shadowBlob, link, basic, emissive, mat,
+  roundRect, fit, glowSprite, ringPulse, shards, shadowBlob, decal, link, basic, emissive, mat,
 } from './kit.js';
 import { X } from './world.js';
 
@@ -44,7 +44,7 @@ export function buildDo(ctx) {
   const pad = platform(1.9, C.good); pad.position.copy(PAD_AT); group.add(pad);
   const padLabel = panel(3.2, 0.8, (g, W, H) => {
     g.clearRect(0, 0, W, H); g.fillStyle = css(C.good); g.font = `800 ${H * 0.4}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('RELEASED', W / 2, H * 0.5);
-  }); padLabel.position.set(PAD_AT.x, 0.06, PAD_AT.z); padLabel.rotation.x = -Math.PI / 2; group.add(padLabel);
+  }); padLabel.position.set(PAD_AT.x, 0.11, PAD_AT.z); padLabel.rotation.x = -Math.PI / 2; decal(padLabel, 5); group.add(padLabel);
 
   // ---------------------------------------------------- emergency stop button
   const stop = new THREE.Group(); stop.position.set(-2.6, 0, 3.8); group.add(stop);
@@ -157,7 +157,7 @@ export function buildDo(ctx) {
     const risk = data.suitability[which === 'safe' ? 'INS-MMF' : 'INS-HK-NOTE'].product_risk;
     const slot = zones.indexOf(risk);
     const tok = packet(zoneColor[slot], 0.34); tok.position.set(GAUGE_X + 1.8 + 0.9, 5.2, 3.6); temp.add(tok);
-    say(`<b>${which === 'safe' ? 'Money market fund' : 'Structured note'}</b><small>${risk} risk</small>`, tok, { offset: [0, 0.9, 0], tone: which === 'safe' ? 'good' : 'bad' });
+    say(`<b>${which === 'safe' ? 'Money market fund' : 'Structured note'}</b><small>${risk} risk</small>`, tok, { offset: [0.7, 0, 0], align: 'right', tone: which === 'safe' ? 'good' : 'bad' });   // beside the token, clear of the ladder's labels
     await s.wait(0.5);
     await s.glide(tok, [GAUGE_X + slot * 1.8, 1.5, 3.6], 1.0, 0.6);
     if (data.suitability[which === 'safe' ? 'INS-MMF' : 'INS-HK-NOTE'].suitable) {

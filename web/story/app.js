@@ -318,6 +318,8 @@ async function boot() {
   window.eastwindStory = {
     go, choose, setPath, view: (cam) => stage.view(cam, { snap: true }), speed: (n) => { stage.speed = n; },
     // How much is still moving: running animations plus labels that have not yet appeared. Zero means settled.
+    // The camera's near plane, so a test can compare depth precision (z-fighting) between two settings.
+    near: (n) => { stage.camera.near = n; stage.camera.updateProjectionMatrix(); },
     busy: () => stage.tweens.size + [...stage.labels.items].filter((item) => performance.now() < item.born).length,
     steps: steps.map((s) => s.id), get current() { return current; }, get path() { return pathId; },
   };

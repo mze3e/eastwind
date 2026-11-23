@@ -107,7 +107,7 @@ def test_focus_is_always_visible_and_motion_is_optional():
     assert "prefers-reduced-motion: reduce" in css
     # The camera does not glide for people who ask for less motion, and the idle drift stops.
     assert re.search(r"if \(reducedMotion\) \{ this\.snap\(pos, look\)", engine)
-    assert "const drift = reducedMotion ? 0 : 1" in engine
+    assert "const drift = reducedMotion ? 0 : this.driftNow" in engine
 
 
 def test_escape_closes_the_drawers_and_the_keys_do_not_fight_the_controls():
@@ -140,6 +140,52 @@ def test_dots_are_big_enough_to_touch_and_hidden_where_they_would_not_fit():
     dots = re.search(r"\.dots button \{([^}]*)\}", css).group(1)
     assert "min-width: 24px" in dots and "min-height: 24px" in dots
     assert re.search(r'body\[data-compact\] \.dots \{ display: none; \}', css)
+
+
+# ------------------------------------------------- legible titles, a steady picture
+
+def test_the_title_and_kicker_have_the_same_glass_backing_as_the_text_under_them():
+    css = read("story.css")
+    for selector in (r"\.kicker", r"\.panel h1", r"\.point"):
+        rule = re.search(selector + r" \{([^}]*)\}", css).group(1)
+        assert "background: rgba(11, 22, 38" in rule and "backdrop-filter: blur" in rule, selector
+    # In a sheet or rail the panel is the backing, so the title does not draw a second one.
+    assert re.search(r"body\[data-compact\]\[data-layout\] \.panel h1 \{[^}]*background: none", css)
+
+
+def test_the_choices_come_before_the_legend_in_a_sheet():
+    css = read("story.css")
+    order = {name: int(value) for name, value in re.findall(r"body\[data-compact\]\[data-layout\] \.(\w+) \{ order: (\d+); \}", css)}
+    assert order["choices"] < order["result"] < order["legend"] < order["taglog"]
+    assert order["point"] < order["choices"]
+
+
+def test_the_floor_layers_cannot_swap_places_from_far_away():
+    """A graphics card cannot tell surfaces apart that are closer than its depth resolution, so the
+    floor would shimmer. The layers are spaced further apart than the worst resolution, and each is also
+    given an explicit depth offset and draw order so the result does not depend on the card."""
+    engine, kit, world = read("engine.js"), read("kit.js"), read("world.js")
+    near = float(re.search(r"PerspectiveCamera\(42, 1, ([\d.]+), ([\d.]+)\)", engine).group(1))
+    farthest = float(re.search(r"maxDist: (\d+)", world).group(1))
+    # The platform's pattern, ring and glow, and the shadow blob: anything lying within a few centimetres of the floor.
+    layers = sorted(v for v in (float(x) for x in re.findall(r"\b(?:top|inner|halo|m)\.position\.y = ([\d.]+)", kit)) if v < 0.5)
+    assert len(layers) == 4, layers
+    spacing = min(b - a for a, b in zip(layers, layers[1:]))
+    resolution_24_bit = farthest ** 2 / (near * 2 ** 24)     # the smallest depth step at that distance
+    assert spacing >= 4 * resolution_24_bit, (spacing, resolution_24_bit)
+    # Each floor layer is offset in depth and drawn in a fixed order.
+    assert "polygonOffsetFactor = -layer" in kit and "mesh.renderOrder = layer" in kit
+    assert len(re.findall(r"decal\(", kit)) >= 5          # the definition, the platform's three layers and the shadow blob
+    assert "polygonOffsetFactor = 2" in world               # the ground sits behind the grid drawn on it
+
+
+def test_the_far_overview_holds_still_instead_of_shimmering():
+    engine, world = read("engine.js"), read("world.js")
+    assert re.search(r"const overview = \{[^}]*drift: 0", world)
+    assert "this.driftTarget = cam.drift ?? 1" in engine
+    # Things smaller than a pixel from that distance are scaled up or faded out, never left to blink.
+    assert "distanceTo(p.position) / 70" in world
+    assert "specks.material.opacity" in world
 
 
 # -------------------------------------------------------------- the browser check
