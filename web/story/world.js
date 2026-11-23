@@ -19,6 +19,7 @@ export function buildWorld(ctx) {
 
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 800), new THREE.MeshStandardMaterial({ color: 0x0a1a2d, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(60, -0.4, 0); group.add(ground);
+  ground.material.polygonOffset = true; ground.material.polygonOffsetFactor = 2; ground.material.polygonOffsetUnits = 2;   // the grid lines sit 0.02 above it: keep them in front from any distance
   const grid = new THREE.GridHelper(900, 150, C.grid, C.grid);
   grid.material.transparent = true; grid.material.opacity = 0.16; grid.position.set(60, -0.38, 0); group.add(grid);
 
@@ -32,6 +33,8 @@ export function buildWorld(ctx) {
   const flow = [];
   for (let i = 0; i < 14; i++) { const p = packet([C.gold, C.cyan, C.amber, C.blue][i % 4], 0.12); p.userData.u = i / 14; group.add(p); flow.push(p); }
   stage.frameFns.add((t) => {
+    // Seen from far away a packet is smaller than a pixel and blinks in and out, so it never shrinks below about two pixels.
+    for (const p of flow) p.scale.setScalar(Math.max(1, stage.camera.position.distanceTo(p.position) / 70));
     if (reducedMotion) return;
     for (const p of flow) { const u = (p.userData.u + t * 0.018) % 1; p.position.set(X.colleague + u * (LAST - X.colleague), -0.1 + Math.sin(t * 2 + p.userData.u * 9) * 0.08, 0); }
   });
@@ -43,10 +46,15 @@ export function buildWorld(ctx) {
   }
 
   const specks = dust(300, [160, 24, 70], [60, 9, 0]); group.add(specks);
-  stage.frameFns.add((t) => specks.userData.tick(t));
+  // The specks are smaller than a pixel from the overview's distance and would twinkle, so they fade out as the camera pulls back.
+  const specksAt = new THREE.Vector3(60, 9, 0);
+  stage.frameFns.add((t) => {
+    specks.userData.tick(t);
+    specks.material.opacity = 0.5 * THREE.MathUtils.clamp(1 - (stage.camera.position.distanceTo(specksAt) - 60) / 60, 0, 1);
+  });
 
   const mid = (LAST + X.colleague) / 2;
-  const overview = { pos: [mid, 60, 98], look: [mid, 0, 27], dur: 2.8, arc: 6, fit: 74, maxDist: 150 };
+  const overview = { pos: [mid, 60, 98], look: [mid, 0, 27], dur: 2.8, arc: 6, fit: 74, maxDist: 150, drift: 0 };
   const cams = {
     welcome: overview,
     recap: overview,
@@ -67,7 +75,8 @@ export function buildWorld(ctx) {
 
   return {
     group, platforms, lit, setActive,
-    camera: (stepId) => cams[stepId],
+    // In a sheet or rail the picture has only part of the screen, so the world is centred on it instead of sitting high.
+    camera: (stepId) => (cams[stepId] && stage.shell !== 'side' ? { ...cams[stepId], look: [mid, 0, 8] } : cams[stepId]),
     enter(stepId, step, scope) {
       if (stepId === 'more-map') { /* the map is HTML over the overview; nothing to animate */ }
       if (stepId === 'recap') {

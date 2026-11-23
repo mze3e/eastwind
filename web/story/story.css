@@ -46,8 +46,12 @@ button:focus-visible, a:focus-visible, .panel:focus-visible { outline: 3px solid
 .panel { position: fixed; left: 1.2rem; bottom: 7.6rem; top: 4.6rem; width: min(460px, 38vw); z-index: 4; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
 .panel > * { pointer-events: auto; }
 .panel-card, .panel { }
-.kicker { margin: 0 0 .5rem; font: 700 .8rem var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-.panel h1 { margin: 0 0 .7rem; font: 700 clamp(1.7rem, 2.6vw, 2.5rem)/1.1 var(--serif); letter-spacing: -.01em; text-shadow: 0 2px 24px rgba(0, 0, 0, .55); }
+/* The kicker and the title sit straight on the 3D picture, so they get the same glass backing as the text under them. */
+.kicker { margin: 0 0 .5rem; width: fit-content; padding: .28rem .8rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(11, 22, 38, .8);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font: 700 .8rem var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.panel h1 { margin: 0 0 .6rem; padding: .6rem 1.1rem .65rem; border-radius: 16px; border: 1px solid var(--line); background: rgba(11, 22, 38, .8);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+  font: 700 clamp(1.7rem, 2.6vw, 2.5rem)/1.1 var(--serif); letter-spacing: -.01em; }
 .point { margin: 0; font-size: clamp(1.02rem, 1.25vw, 1.2rem); color: #d7e3f1; padding: .95rem 1.1rem; border-radius: 16px; border: 1px solid var(--line);
   background: rgba(11, 22, 38, .72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 10px 40px rgba(0, 0, 0, .35); }
 .legend { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .45rem; }
@@ -184,8 +188,13 @@ body[data-shell="rail"][data-layout] .panel { left: 0; right: auto; top: var(--t
   padding: .8rem 1rem 1rem; border-radius: 0 16px 16px 0; border-left: 0; box-shadow: 12px 0 40px rgba(0, 0, 0, .35); }
 body[data-compact][data-layout="map"] .panel { top: var(--top, 3rem); left: 0; right: 0; width: auto; height: auto; border-radius: 0; border-left: 1px solid var(--line); padding: 1rem 1rem 2rem; }
 body[data-compact][data-layout] .panel > * { flex: none; }
-body[data-compact][data-layout] .kicker { text-align: left; }
-body[data-compact][data-layout] .panel h1 { font-size: clamp(1.35rem, 5.4vw, 1.9rem); margin-bottom: .5rem; text-shadow: none; }
+/* In a sheet or rail the panel is the backing, so the kicker and the title need none of their own. */
+body[data-compact][data-layout] .kicker { text-align: left; padding: 0; border: 0; border-radius: 0; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+body[data-compact][data-layout] .panel h1 { font-size: clamp(1.35rem, 5.4vw, 1.9rem); margin-bottom: .5rem; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* The choices come straight after the text, ahead of the legend, so they are never below the fold of a short sheet. */
+body[data-compact][data-layout] .kicker { order: 0; } body[data-compact][data-layout] .panel h1 { order: 1; } body[data-compact][data-layout] .point { order: 2; }
+body[data-compact][data-layout] .choices { order: 3; } body[data-compact][data-layout] .result { order: 4; } body[data-compact][data-layout] .legend { order: 5; }
+body[data-compact][data-layout] .callouts { order: 6; } body[data-compact][data-layout] .map { order: 7; } body[data-compact][data-layout] .taglog { order: 8; }
 body[data-compact][data-layout] .point { max-width: none; padding: 0; border: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 1rem; }
 body[data-compact][data-layout] .legend { grid-template-columns: 1fr; }
 body[data-compact][data-layout] .legend li { flex-direction: row; text-align: left; align-items: baseline; gap: .7rem; }

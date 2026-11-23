@@ -145,12 +145,15 @@ export class Stage {
     this.shiftTarget = 0;
     this.speed = 1;   // a test hook: automated checks run the choreography faster
     this.wide = false;
+    this.driftTarget = 1; this.driftNow = 1;   // how much the camera sways: a view can ask for none (see `view`)
     this.shell = 'side';       // 'side': caption panel at the left. 'sheet': under the picture. 'rail': a left rail on short windows. app.js decides.
     this.insetTop = 0; this.insetBottom = 0; this.insetLeft = 0; this.shiftY = 0;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0b1626);
     this.scene.fog = new THREE.Fog(0x0b1626, 90, 300);
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+    // The near plane is as far out as the scenes allow (nothing is nearer than about 11 units): depth precision falls
+    // with distance and rises with the near plane, and the overview is seen from 100 units or more.
+    this.camera = new THREE.PerspectiveCamera(42, 1, 1, 500);
     this.lookTarget = new THREE.Vector3(0, 1.5, 0);
     this.camBase = new THREE.Vector3(0, 8, 18);
     this.camera.position.copy(this.camBase);
@@ -231,6 +234,8 @@ export class Stage {
   /** Go to a camera preset, fitted to this viewport. Re-fitted on resize. */
   view(cam, { snap = false } = {}) {
     this.currentView = cam;
+    this.driftTarget = cam.drift ?? 1;           // a far overview is still: thin lines and tiny points crawl when the camera sways
+    if (snap) this.driftNow = this.driftTarget;
     const c = this.fitView(cam);
     if (snap) { this.snap(c.pos, c.look); return Promise.resolve(); }
     return this.fly(c.pos, c.look, cam.dur ?? 2.2, cam.arc ?? 2);
@@ -270,7 +275,8 @@ export class Stage {
       this.shiftX += (this.shiftTarget - this.shiftX) * Math.min(1, dt * 4);
       this.camera.setViewOffset(this.width, this.height, -this.shiftX, -this.shiftY, this.width, this.height);
     }
-    const drift = reducedMotion ? 0 : 1;
+    this.driftNow += (this.driftTarget - this.driftNow) * Math.min(1, dt * 2);
+    const drift = reducedMotion ? 0 : this.driftNow;
     this.camera.position.set(
       this.camBase.x + Math.sin(this.time * 0.23) * 0.35 * drift,
       this.camBase.y + Math.sin(this.time * 0.31) * 0.18 * drift,
