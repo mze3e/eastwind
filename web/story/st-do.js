@@ -157,7 +157,7 @@ export function buildDo(ctx) {
     const risk = data.suitability[which === 'safe' ? 'INS-MMF' : 'INS-HK-NOTE'].product_risk;
     const slot = zones.indexOf(risk);
     const tok = packet(zoneColor[slot], 0.34); tok.position.set(GAUGE_X + 1.8 + 0.9, 5.2, 3.6); temp.add(tok);
-    say(`<b>${which === 'safe' ? 'Money market fund' : 'Structured note'}</b><small>${risk} risk</small>`, tok, { offset: [0, 0.9, 0], tone: which === 'safe' ? 'good' : 'bad' });
+    say(`<b>${which === 'safe' ? 'Money market fund' : 'Structured note'}</b><small>${risk} risk</small>`, tok, { offset: [0.7, 0, 0], align: 'right', tone: which === 'safe' ? 'good' : 'bad' });   // beside the token, clear of the ladder's labels
     await s.wait(0.5);
     await s.glide(tok, [GAUGE_X + slot * 1.8, 1.5, 3.6], 1.0, 0.6);
     if (data.suitability[which === 'safe' ? 'INS-MMF' : 'INS-HK-NOTE'].suitable) {
